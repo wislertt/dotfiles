@@ -1,0 +1,4 @@
+[submodule "private"]
+	path = private
+	url = https://github.com/wislertt/dotfiles-private.git
+	branch = main
