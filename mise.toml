@@ -1,3 +1,19 @@
+# Machine setup: mise -C <vault>/repos/wislertt/dotfiles bootstrap
+[bootstrap]
+dotfile_groups = ["config", "home"]
+
+# Groups, not [dotfiles] entries: two [dotfiles] entries cannot share ~/.config with private.
+[dotfile_groups.config]
+root = "src/config"
+target = "~/.config"
+
+[dotfile_groups.home]
+root = "src/home"
+target = "~"
+
+[settings.dotfiles]
+root = "."
+
 [tools]
 bun = "latest"
 "pipx:bakefile" = { version = "latest", extras = "locked" }
