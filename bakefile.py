@@ -8,6 +8,7 @@
 from collections.abc import Mapping
 from typing import ClassVar, cast
 
+from bake import command
 from bakelib.refreshable_cache import FetchFn, FnoxFetchFn
 from bakelib.space import FnoxSpace, SubmodulesUtils
 
@@ -31,6 +32,11 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None]):
         "test_all",
         "test_integration",
     ]
+
+    @command()
+    def apply(self) -> None:
+        """Link dotfiles into ~ with mise (overwrites existing files)"""
+        self.ctx.run("mise dotfiles apply --force")
 
     def test(self) -> None:
         # assert-setup-dev calls test(); a dotfiles repo has nothing to test
