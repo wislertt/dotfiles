@@ -16,7 +16,8 @@ usage() { echo "usage: claude-glm-settings [on|off]" >&2; exit 2; }
 [ $# -le 1 ] || usage
 
 current="$([ -f "$file" ] && jq -r '.apiKeyHelper // empty' "$file" || true)"
-if [ -n "$current" ] && [ "$current" != "$helper" ]; then
+# Ours if it ends with our command, so a moved repo path still counts as ours.
+if [ -n "$current" ] && [ "${current% secret get "$secret"}" = "$current" ]; then
     echo "Error: $file has a different apiKeyHelper, not touching it: $current" >&2
     exit 1
 fi
