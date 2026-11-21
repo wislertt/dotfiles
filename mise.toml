@@ -1,8 +1,12 @@
 # Machine setup: mise -C <vault>/repos/wislertt/dotfiles bootstrap
 [bootstrap]
-dotfile_groups = ["config", "home"]
+dotfile_groups = ["bin", "config", "home"]
 
 # Groups, not [dotfiles] entries: two [dotfiles] entries cannot share ~/.config with private.
+[dotfile_groups.bin]
+root = "src/bin"
+target = "~/.local/bin"
+
 [dotfile_groups.config]
 root = "src/config"
 target = "~/.config"

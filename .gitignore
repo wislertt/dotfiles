@@ -265,3 +265,5 @@ $RECYCLE.BIN/
 .playwright-mcp/
 .scratch
 # END bakefile:gitignore
+*.local.toml
+!src/lib/
