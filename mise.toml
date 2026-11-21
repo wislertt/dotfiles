@@ -19,7 +19,10 @@ target = "~"
 root = "."
 
 [tools]
+age = "latest"
 bun = "latest"
+fnox = "latest"
+"npm:oxfmt" = "latest"
 "pipx:bakefile" = { version = "latest", extras = "locked" }
 "pipx:pre-commit" = "latest"
 "pipx:toml-sort" = "latest"
