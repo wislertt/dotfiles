@@ -5,7 +5,7 @@ import pytest
 from bake.utils.settings import PlatformType
 from bakelib import BaseSpace
 
-import bakefile
+from src.python import bakefile
 from tests.unit.conftest import FakeCtx
 
 

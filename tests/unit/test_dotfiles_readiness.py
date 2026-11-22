@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-import bakefile
+from src.python import bakefile
 from tests.unit.conftest import FakeVault
 
 

@@ -10,8 +10,12 @@ dependencies = [
 [dependency-groups]
 dev = [
   "deptry>=0.24.0",
+  "pytest-cov>=7.1.0",
   "pytest>=9.2.0"
 ]
+
+[tool.deptry]
+known_first_party = ["src"]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"

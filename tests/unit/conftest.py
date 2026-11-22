@@ -6,7 +6,7 @@ from unittest.mock import PropertyMock, patch
 
 import pytest
 
-import bakefile
+from src.python import bakefile
 
 
 class FakeCtx:
@@ -59,6 +59,8 @@ def bakebook(fake_ctx: FakeCtx, fake_vault: FakeVault) -> Iterator[bakefile.MyBa
 @pytest.fixture
 def fake_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A repo root without the private companion; bakefile finds it through `__file__`."""
-    monkeypatch.setattr(bakefile, "__file__", str(tmp_path / "bakefile.py"))
+    monkeypatch.setattr(
+        bakefile, "__file__", str(tmp_path / "src" / "python" / "bakefile.py")
+    )
     (tmp_path / "src" / "lib").mkdir(parents=True)
     return tmp_path
