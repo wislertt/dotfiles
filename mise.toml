@@ -1,4 +1,4 @@
-# Machine setup: mise -C <vault>/repos/wislertt/dotfiles bootstrap
+# Machine setup: `mise install`, then `bake setup-dev` (see README)
 [bootstrap]
 dotfile_groups = ["bin", "config", "home", "private-bin", "private-config", "private-home"]
 

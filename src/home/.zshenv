@@ -4,4 +4,5 @@ export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 
 # Read by every zsh, including non-interactive scripts.
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
-export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+[[ $OSTYPE == darwin* ]] && export PATH="/opt/homebrew/bin:$PATH"
