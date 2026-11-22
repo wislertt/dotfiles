@@ -19,7 +19,7 @@ compinit
 zstyle ':completion:*' menu select
 
 # launchctl: GUI apps launched from Spotlight or the Dock inherit this PATH.
-launchctl setenv PATH "$PATH" 2>/dev/null
+command -v launchctl >/dev/null && launchctl setenv PATH "$PATH" 2>/dev/null
 
 # mise: activate managed tool versions
 eval "$(mise activate zsh)"

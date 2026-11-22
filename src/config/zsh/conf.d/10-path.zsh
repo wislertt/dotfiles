@@ -1,10 +1,10 @@
 typeset -U path PATH
+[[ $OSTYPE == darwin* ]] && brew_path=(/opt/homebrew/opt/mysql-client/bin /opt/homebrew/bin /opt/homebrew/sbin)
 path=(
     "$HOME/.local/bin"
-    /opt/homebrew/opt/mysql-client/bin
-    /opt/homebrew/bin
-    /opt/homebrew/sbin
+    $brew_path
     $path
     "$HOME/.cargo/bin"
 )
+unset brew_path
 export PATH

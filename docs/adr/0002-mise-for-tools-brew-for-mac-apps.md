@@ -1,0 +1,5 @@
+# mise installs tools; Homebrew installs only macOS GUI apps, from a Brewfile
+
+Every command-line tool comes from mise, so Setup is the same on any platform. GUI apps (Orca, Zed, Docker) are macOS casks that mise cannot install, so they live in a `Brewfile` (`src/lib/Brewfile`, not linked), applied only on macOS, and never with `brew bundle --cleanup` because that would remove apps installed by hand. A tool lives in exactly one of the two. We considered mise-only with a manual "install by hand" list (rejected: apps would be unreproducible) and Brewfile for everything (rejected: it ties the whole setup to Homebrew).
+
+Casks float, so `Brewfile.lock.json` is not written, and mise tools float at `latest` too (pin one in `mise.toml` only when a release breaks it; no `mise.lock`, the rare drift is caught by the weekly Fresh-machine job). `bake update` upgrades them. Setup installs mise tools without upgrading them; Update upgrades. Setup and Update also run bakelib's Homebrew upgrade for now, while some packages are still installed by hand (TODO in `bakefile.py`).

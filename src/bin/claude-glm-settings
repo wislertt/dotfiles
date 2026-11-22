@@ -6,51 +6,53 @@ set -euo pipefail
 file=".claude/settings.local.json"
 secret="CLAUDE_GLM_AUTH_TOKEN"
 # This file is a symlink into the dotfiles repo, where bake knows the secret.
-repo="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
+script="$(readlink -f "${BASH_SOURCE[0]}")"
+repo="$(cd "${script%/*}/../.." && pwd)"
 
-helper="bake -C $repo secret get $secret"
+helper="bake -C ${repo} secret get ${secret}"
 # KEY=value lines of the shared env file, as a JSON object
-env_json="$(jq -Rn '[inputs | select(test("^[A-Z_]+=")) | capture("^(?<k>[^=]+)=(?<v>.*)$") | {(.k): .v}] | add' "$repo/src/lib/claude-glm.env")"
+env_json="$(jq -Rn '[inputs | select(test("^[A-Z_]+=")) | capture("^(?<k>[^=]+)=(?<v>.*)$") | {(.k): .v}] | add' "${repo}/src/lib/claude-glm.env")"
 
 usage() { echo "usage: claude-glm-settings [on|off]" >&2; exit 2; }
-[ $# -le 1 ] || usage
+[[ $# -le 1 ]] || usage
 
-current="$([ -f "$file" ] && jq -r '.apiKeyHelper // empty' "$file" || true)"
+current="$([[ -f "${file}" ]] && jq -r '.apiKeyHelper // empty' "${file}" || true)"
 # Ours if it ends with our command, so a moved repo path still counts as ours.
-if [ -n "$current" ] && [ "${current% secret get "$secret"}" = "$current" ]; then
-    echo "Error: $file has a different apiKeyHelper, not touching it: $current" >&2
+if [[ -n "${current}" ]] && [[ "${current% secret get "${secret}"}" = "${current}" ]]; then
+    echo "Error: ${file} has a different apiKeyHelper, not touching it: ${current}" >&2
     exit 1
 fi
 
 mode="${1:-}"
-if [ -z "$mode" ]; then
-    if [ -n "$current" ]; then mode=off; else mode=on; fi
+if [[ -z "${mode}" ]]; then
+    if [[ -n "${current}" ]]; then mode=off; else mode=on; fi
 fi
 
-case "$mode" in
+case "${mode}" in
 on)
     mkdir -p .claude
-    [ -f "$file" ] || echo '{}' > "$file"
+    [[ -f "${file}" ]] || echo '{}' > "${file}"
     tmp="$(mktemp)"
-    jq --arg helper "$helper" --argjson env "$env_json" '
+    jq --arg helper "${helper}" --argjson env "${env_json}" '
         .apiKeyHelper = $helper
-        | .env = ((.env // {}) + $env)' "$file" > "$tmp"
-    mv "$tmp" "$file"
-    echo "GLM on in $PWD ($file)"
+        | .env = ((.env // {}) + $env)' "${file}" > "${tmp}"
+    mv "${tmp}" "${file}"
+    echo "GLM on in ${PWD} (${file})"
     ;;
 off)
-    [ -f "$file" ] || { echo "GLM already off in $PWD"; exit 0; }
+    [[ -f "${file}" ]] || { echo "GLM already off in ${PWD}"; exit 0; }
     tmp="$(mktemp)"
-    jq --argjson env "$env_json" '
+    jq --argjson env "${env_json}" '
         del(.apiKeyHelper)
         | .env |= (if . == null then null else with_entries(select(.key as $k | $env | has($k) | not)) end)
-        | if .env == {} or .env == null then del(.env) else . end' "$file" > "$tmp"
-    if [ "$(jq 'length' "$tmp")" -eq 0 ]; then
-        rm -f "$file" "$tmp"
+        | if .env == {} or .env == null then del(.env) else . end' "${file}" > "${tmp}"
+    keys="$(jq 'length' "${tmp}")"
+    if [[ "${keys}" -eq 0 ]]; then
+        rm -f "${file}" "${tmp}"
     else
-        mv "$tmp" "$file"
+        mv "${tmp}" "${file}"
     fi
-    echo "GLM off in $PWD"
+    echo "GLM off in ${PWD}"
     ;;
 *) usage ;;
 esac

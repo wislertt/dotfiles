@@ -3,10 +3,11 @@ set -euo pipefail
 container="aiclient2api"
 
 docker pull justlikemaki/aiclient-2-api
-if [ "$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" = "true" ]; then
-    docker stop "$container" >/dev/null
+running="$(docker inspect -f '{{.State.Running}}' "${container}" 2>/dev/null || true)"
+if [[ "${running}" = "true" ]]; then
+    docker stop "${container}" >/dev/null
 fi
-if docker inspect "$container" >/dev/null 2>&1; then
-    docker rm "$container" >/dev/null
+if docker inspect "${container}" >/dev/null 2>&1; then
+    docker rm "${container}" >/dev/null
 fi
 exec aiclient2api-up

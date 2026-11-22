@@ -268,3 +268,6 @@ $RECYCLE.BIN/
 *.local.toml
 # the Python template above ignores lib/; src/lib holds data read by src/bin scripts
 !src/lib/
+
+# Homebrew bundle lock: never written here (ADR 0002)
+Brewfile.lock.json
