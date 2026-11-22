@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Start the AIClient2API proxy. Web UI: http://localhost:3000, data: ~/aiclient2api.
+set -euo pipefail
+
+container="aiclient2api"
+image="justlikemaki/aiclient-2-api"
+port=3000
+data_dir="$HOME/aiclient2api"
+
+if command -v colima >/dev/null 2>&1; then
+    colima status >/dev/null 2>&1 || colima start
+fi
+
+if [ "$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" = "true" ]; then
+    exit 0
+fi
+
+if created="$(docker image inspect "$image" -f '{{.Created}}' 2>/dev/null)"; then
+    if created_epoch="$(date -j -f '%Y-%m-%dT%H:%M:%S' "${created%%.*}" +%s 2>/dev/null)"; then
+        age_days=$((($(date +%s) - created_epoch) / 86400))
+        if [ "$age_days" -ge 14 ]; then
+            echo "Note: AIClient2API image is $age_days days old. Run 'aiclient2api-update' to refresh."
+        fi
+    fi
+fi
+
+if docker inspect "$container" >/dev/null 2>&1; then
+    docker start "$container" >/dev/null
+else
+    mkdir -p "$data_dir"/{configs,plugins,.private}
+    # 19876-19880 are OAuth callbacks. Add e.g. -p 127.0.0.1:1455:1455 for another provider.
+    docker run -d --name "$container" --restart=no \
+        -p "127.0.0.1:$port:3000" -p 127.0.0.1:19876-19880:19876-19880 \
+        -v "$data_dir/configs:/app/configs" \
+        -v "$data_dir/plugins:/app/src/plugins-user" \
+        -v "$data_dir/.private:/app/.private" \
+        "$image" >/dev/null
+fi
+
+echo "Waiting for AIClient2API..."
+for _ in {1..30}; do
+    curl -s -o /dev/null "http://localhost:$port" && exit 0
+    sleep 1
+done
+echo "Error: AIClient2API did not come up" >&2
+exit 1
