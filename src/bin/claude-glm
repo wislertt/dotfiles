@@ -5,17 +5,18 @@ set -euo pipefail
 secret="CLAUDE_GLM_AUTH_TOKEN"
 
 # This file is a symlink into the dotfiles repo, where bake knows the secret.
-repo="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
+script="$(readlink -f "${BASH_SOURCE[0]}")"
+repo="$(cd "${script%/*}/../.." && pwd)"
 
-if ! auth_token="$(bake -C "$repo" secret get "$secret" 2>/dev/null)" || [ -z "$auth_token" ]; then
-    echo "Error: $secret not available. Run: bake -C $repo setup-fnox" >&2
+if ! auth_token="$(bake -C "${repo}" secret get "${secret}" 2>/dev/null)" || [[ -z "${auth_token}" ]]; then
+    echo "Error: ${secret} not available. Run: bake -C ${repo} setup-fnox" >&2
     exit 1
 fi
 
 set -a
 # shellcheck source=/dev/null
-. "$repo/src/lib/claude-glm.env"
+. "${repo}/src/lib/claude-glm.env"
 set +a
-export ANTHROPIC_AUTH_TOKEN="$auth_token"
+export ANTHROPIC_AUTH_TOKEN="${auth_token}"
 
 exec claude "$@"

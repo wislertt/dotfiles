@@ -1,8 +1,8 @@
 # dotfiles
 
-Machine setup for my Macs. Private parts live in the `private/` submodule ([dotfiles-private](https://github.com/wislertt/dotfiles-private)).
+Machine setup for my computers, tested only on macOS. Private parts live in the `private/` submodule ([dotfiles-private](https://github.com/wislertt/dotfiles-private)).
 
-## New Mac
+## New machine
 
 1. Install [mise](https://mise.jdx.dev).
 2. `mise install` (brings `bake`).

@@ -7,6 +7,7 @@ from bakelib.refreshable_cache import FetchFn, FnoxFetchFn
 from bakelib.refreshable_cache.fnox import run_fnox
 from bakelib.space import FnoxSpace, PythonSpace, SubmodulesUtils
 from bakelib.space.params import DurationsOption
+from identify import identify
 
 # Names the scripts in src/bin read with `bake secret get`; the references live in fnox.toml
 SECRET_KEYS = ("CLAUDE_GLM_AUTH_TOKEN", "AICLIENT2API_API_KEY")
@@ -23,6 +24,15 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
             *(cast("FetchFn[str | None]", FnoxFetchFn(key)) for key in SECRET_KEYS),
         )
 
+    def _get_mise_tools(self) -> set[str]:
+        return {*super()._get_mise_tools(), "jq", "shellcheck"}
+
+    def _get_required_cli_tools(self) -> dict[str, set[Path] | None]:
+        tools = super()._get_required_cli_tools()
+        tools["jq"] = None
+        tools["shellcheck"] = None
+        return tools
+
     __exclude_command_methods__: ClassVar[list[str]] = [
         "test",
         "test_all",
@@ -31,7 +41,25 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
 
     def _lint_fast(self) -> None:
         super()._lint_fast()
+        self._lint_shell()
         self._assert_global_fnox_empty()
+
+    def _lint_shell(self) -> None:
+        # Same file types as the pre-commit shellcheck hook; ShellCheck cannot parse zsh, so `zsh -n`
+        out = self.ctx.run(
+            ["git", "ls-files", "-z"], capture_output=True, stream=False, echo=False
+        ).stdout
+        tags = {
+            name: identify.tags_from_path(name)
+            for name in filter(None, out.split("\0"))
+            if Path(name).is_file() and not Path(name).is_symlink()
+        }
+        sh = [n for n, t in tags.items() if "shell" in t and "zsh" not in t]
+        zsh = [n for n, t in tags.items() if "zsh" in t]
+        if sh:
+            self.ctx.run(["shellcheck", "--", *sh])
+        for name in zsh:
+            self.ctx.run(["zsh", "-n", name])
 
     def _assert_global_fnox_empty(self) -> None:
         # Secrets come only from `bake secret get`; the global fnox config must stay unused

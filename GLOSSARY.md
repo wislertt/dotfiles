@@ -1,6 +1,6 @@
 # dotfiles
 
-A Mac's shared shell, tool and script configuration, kept as a public repo with a private companion. This context names the three times work happens and the places things live.
+A machine's shared shell, tool and script configuration, kept as a public repo with a private companion. This context names the three times work happens and the places things live.
 
 ## Language
 
@@ -11,7 +11,7 @@ Run with `bake apply`. The ritual that links the repo's files into place and the
 _Avoid_: Install, deploy, sync
 
 **Setup**:
-Run with `bake setup-dev`. The ritual that prepares a machine: tools, secrets access and tooling, ending with an Apply. Needed once per machine, which on a fresh Mac includes getting the tool manager in place, and again when a new tool needs to take effect.
+Run with `bake setup-dev`. The ritual that prepares a machine: tools, secrets access and tooling, ending with an Apply. Needed once per machine, which on a fresh machine includes getting the tool manager in place, and again when a new tool needs to take effect.
 _Avoid_: Install, provision, init, bootstrap
 
 **Use**:

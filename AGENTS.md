@@ -7,7 +7,7 @@ Public dotfiles, linked with mise and driven by `bake`. macOS is the only tested
 Put each thing in exactly one home.
 
 - **Bitwarden**: secret values only, named `DOTFILES_*`. Test: would leaking it cause harm?
-- **Public repo**: secret references (names in `fnox.toml`, never values) and config that is the same on every Mac and reveals nothing about the owner. Test: could a stranger read it with no loss?
+- **Public repo**: secret references (names in `fnox.toml`, never values) and config that is the same on every machine and reveals nothing about the owner. Test: could a stranger read it with no loss?
 - **Private repo** (the `private/` submodule): anything that reveals an account, employer or work setup, or is personal. Still no secret values. Test: does it say who or where?
 - **Disposable**: state a machine regenerates and nothing versions (service passwords, OAuth tokens, containers, `~/.aws/sso/cache`, `.venv`, `.scratch/`). Test: can it be deleted and rebuilt?
 
@@ -31,7 +31,7 @@ Every new thing is assigned to one of these when it is added, and captured in th
 - **Setup**: `bake setup-dev`, installs tools, includes `bake setup-fnox`, and ends with `bake apply`.
 - **Use**: not a bake command. Whenever something that invokes our dotfiles runs (a linked script, a shell start).
 
-Fresh Mac: install mise, `mise install`, `bake setup-dev`. Everyday: `bake apply`.
+Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake apply`.
 
 ## Layout and commands
 
