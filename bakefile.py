@@ -1,9 +1,12 @@
+import re
+import shutil
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, ClassVar, cast
 from unittest.mock import patch
 
 from bake import command, console
+from bake.utils.settings import PlatformType
 from bakelib.refreshable_cache import FetchFn, FnoxFetchFn
 from bakelib.refreshable_cache.fnox import run_fnox
 from bakelib.space import FnoxSpace, PythonSpace, SubmodulesUtils
@@ -12,6 +15,9 @@ from identify import identify
 
 # Names the scripts in src/bin read with `bake secret get`; the references live in fnox.toml
 SECRET_KEYS = ("CLAUDE_GLM_AUTH_TOKEN", "AICLIENT2API_API_KEY")
+
+# A Brewfile holds casks only (ADR 0002): anything else belongs to the tool manager
+CASK_LINE = re.compile(r"""^cask (["'])[^"']+\1(,.*)?$""")
 
 
 class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
@@ -24,6 +30,40 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
             *super().get_secret_fetch_fns(),
             *(cast("FetchFn[str | None]", FnoxFetchFn(key)) for key in SECRET_KEYS),
         )
+
+    def _brewfiles(self) -> list[Path]:
+        root = Path(__file__).parent
+        paths = (root / "src/lib/Brewfile", root / "private/src/lib/Brewfile")
+        return [p for p in paths if p.is_file()]
+
+    def _brew_bundle(self, platform: PlatformType, verb: str) -> None:
+        if platform != "macos":
+            return
+        brewfiles = self._brewfiles()
+        if brewfiles and not shutil.which("brew"):
+            raise SystemExit(
+                "Homebrew is not installed, so the Brewfile apps cannot be set up"
+            )
+        for brewfile in brewfiles:
+            self.ctx.run(["brew", "bundle", verb, "--file", str(brewfile)])
+
+    def _setup_platform_tools(self, platform: PlatformType) -> None:
+        # TODO: drop super() once no Homebrew package is installed by hand (move each to mise or a Brewfile)
+        super()._setup_platform_tools(platform)
+        self._brew_bundle(platform, "install")
+
+    def _update_platform_tools(self, platform: PlatformType) -> None:
+        # TODO: drop super() once no Homebrew package is installed by hand (move each to mise or a Brewfile)
+        super()._update_platform_tools(platform)
+        self._brew_bundle(platform, "upgrade")
+
+    def _setup_tools(self) -> None:
+        # bakelib's default ends with `mise upgrade` and `uv python upgrade`; those belong to Update
+        self._add_mise_tools()
+        self.ctx.run(["mise", "install"])
+        self.ctx.run(["mise", "doctor"])
+        self.ctx.run(["mise", "list", "--local"])
+        self._sync_submodules(frozen=True)
 
     def _get_mise_tools(self) -> set[str]:
         return {*super()._get_mise_tools(), "jq", "shellcheck"}
@@ -54,6 +94,7 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         super()._lint_fast()
         self._lint_shell()
         self._assert_global_fnox_empty()
+        self._lint_brewfiles()
 
     def _lint_shell(self) -> None:
         # Same file types as the pre-commit shellcheck hook; ShellCheck cannot parse zsh, so `zsh -n`
@@ -71,6 +112,19 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
             self.ctx.run(["shellcheck", "--", *sh])
         for name in zsh:
             self.ctx.run(["zsh", "-n", name])
+
+    def _lint_brewfiles(self) -> None:
+        for brewfile in self._brewfiles():
+            for number, line in enumerate(brewfile.read_text().splitlines(), 1):
+                text = line.strip()
+                if text and not text.startswith("#") and not CASK_LINE.match(text):
+                    raise SystemExit(
+                        f'{brewfile.name}:{number}: only `cask "name"` lines allowed'
+                    )
+            if shutil.which("brew"):
+                self.ctx.run(
+                    ["brew", "bundle", "list", "--file", str(brewfile), "--cask"]
+                )
 
     def _assert_global_fnox_empty(self) -> None:
         # Secrets come only from `bake secret get`; the global fnox config must stay unused

@@ -19,6 +19,7 @@ target = "~"
 root = "."
 
 [tools]
+# latest by default; pin a version only if a release breaks something, and say why
 age = "latest"
 bun = "latest"
 fnox = "latest"

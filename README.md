@@ -6,9 +6,11 @@ Machine setup for my computers, tested only on macOS. Private parts live in the 
 
 1. Install [mise](https://mise.jdx.dev).
 2. `mise install` (brings `bake`).
-3. `bake setup-dev`: installs tools, creates the age key, stores the Bitwarden token, then runs `bake apply` as its last step.
+3. `bake setup-dev`: installs tools and, on macOS, the apps in `src/lib/Brewfile` (it also upgrades Homebrew for now), creates the age key, stores the Bitwarden token, then runs `bake apply` as its last step.
 
 ## Everyday
+
+`bake update` upgrades tools and, on macOS, the Brewfile apps, only when you run it.
 
 `bake apply` links the dotfiles into `~`, then asserts (age key present, Bitwarden token stored, each declared secret resolves). It prints no secret values and writes nothing, but resolving a secret may contact the secret store. If the assert fails, it reports what is missing; on a new machine `bake setup-dev` sets up the age key and token.
 

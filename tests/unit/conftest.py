@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -14,10 +15,12 @@ class FakeCtx:
     def __init__(self, returncode: int = 0) -> None:
         self.returncode = returncode
         self.commands: list[list[str]] = []
+        self.envs: list[dict[str, str]] = []
 
-    def run(self, cmd: list[str], **_kwargs: object) -> SimpleNamespace:
-        self.commands.append(cmd)
-        return SimpleNamespace(returncode=self.returncode)
+    def run(self, cmd: list[str] | str, **kwargs: Any) -> SimpleNamespace:
+        self.commands.append(cmd.split() if isinstance(cmd, str) else cmd)
+        self.envs.append(kwargs.get("env") or {})
+        return SimpleNamespace(returncode=self.returncode, stdout="")
 
 
 class FakeVault:
@@ -49,6 +52,7 @@ def bakebook(fake_ctx: FakeCtx, fake_vault: FakeVault) -> Iterator[bakefile.MyBa
         ctx.return_value = fake_ctx
         book = bakefile.MyBakebook()
         fake_ctx.commands.clear()  # construction runs its own setup commands
+        fake_ctx.envs.clear()
         yield book
 
 
@@ -56,4 +60,5 @@ def bakebook(fake_ctx: FakeCtx, fake_vault: FakeVault) -> Iterator[bakefile.MyBa
 def fake_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A repo root without the private companion; bakefile finds it through `__file__`."""
     monkeypatch.setattr(bakefile, "__file__", str(tmp_path / "bakefile.py"))
+    (tmp_path / "src" / "lib").mkdir(parents=True)
     return tmp_path

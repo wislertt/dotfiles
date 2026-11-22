@@ -23,23 +23,25 @@ Put each thing in exactly one home.
 - `bake apply` only links, then runs the assert (age key present, Bitwarden token stored, each declared secret resolves; no values printed, nothing written; resolving a secret may contact the secret store). On failure it exits nonzero and reports what is missing, without saying how to fix it.
 - Anything that starts or changes a service is a script in `src/bin/`.
 
-## Three times
+## Four times
 
 Every new thing is assigned to one of these when it is added, and captured in that step.
 
 - **Apply**: `bake apply`, links dotfiles.
-- **Setup**: `bake setup-dev`, installs tools, includes `bake setup-fnox`, and ends with `bake apply`.
+- **Setup**: `bake setup-dev`, installs tools from mise (`mise.toml`) and, on macOS, the casks in `src/lib/Brewfile` and `private/src/lib/Brewfile`; mise tools are not upgraded. For now bakelib also upgrades Homebrew here (TODO: drop once nothing in Homebrew is installed by hand). Includes `bake setup-fnox`, and ends with `bake apply`.
+- **Update**: `bake update`, on demand. Upgrades tools and, on macOS, Brewfile apps.
 - **Use**: not a bake command. Whenever something that invokes our dotfiles runs (a linked script, a shell start).
 
 Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake apply`.
 
 ## Layout and commands
 
-- `src/bin` links to `~/.local/bin`, `src/config` to `~/.config`, `src/home` to `~`. `src/lib` is not linked: scripts read it from the repo.
+- `src/bin` links to `~/.local/bin`, `src/config` to `~/.config`, `src/home` to `~`. `src/lib` is not linked: scripts and `bake` read it from the repo (shared env files, the Brewfiles).
 - `private/src/{bin,config,home}` link to the same targets.
 - A new file in an existing group needs nothing. A new target needs a group in `mise.toml` (`[dotfile_groups.*]` and `bootstrap.dotfile_groups`); private groups go in `mise.private.toml`, loaded with `-E private` when `private/` exists.
 - Zsh modules are `src/config/zsh/conf.d/NN-name.zsh`, loaded in order: 10 path, 20 tools, 30 aliases, 40 claude. Public modules use 10-49, private modules use 50-89. Pick the next free number in the range that fits.
-- `bake lint`: format and lint checks. `bake apply`, `bake setup-dev`, `bake setup-fnox`: as above.
+- `bake lint`: format and lint checks. `bake apply`, `bake setup-dev`, `bake setup-fnox`, `bake update`: as above.
+- A command-line tool goes in `mise.toml` at `latest`; pin a version there only when a release breaks something, with a one-line comment why. A macOS GUI app goes in a Brewfile as a `cask` line, and nowhere else; `bake lint` checks both.
 
 ## Conduct
 

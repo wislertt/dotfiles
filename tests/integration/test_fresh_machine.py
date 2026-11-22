@@ -46,6 +46,9 @@ def test_private_groups_load_when_the_private_companion_is_present(
             .as_posix()
             .partition("/")
         )
+        if group == "lib":  # read from the repo, never linked
+            assert source not in links.values()
+            continue
         base = {"bin": Path(".local/bin"), "config": Path(".config"), "home": Path()}[
             group
         ]

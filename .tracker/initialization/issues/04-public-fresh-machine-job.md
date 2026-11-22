@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 
-Blocked by: 01 (Safe, standalone Apply), 02 (Pinned tools, Brewfile and Update), 03 (Public CI and versioning)
+Blocked by: 01 (Safe, standalone Apply), 02 (Tools, Brewfile and Update), 03 (Public CI and versioning)
 
 Spec: `.tracker/initialization/spec.md`.
 
