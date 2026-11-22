@@ -45,3 +45,7 @@ jobs:
 
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
+
+    fresh-machine:
+        uses: ./.github/workflows/fresh-machine.yml
+        secrets: inherit

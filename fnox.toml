@@ -10,3 +10,8 @@ value = "DOTFILES_GLM_CODING_API_KEY"
 [secrets.AICLIENT2API_API_KEY]
 provider = "bw"
 value = "DOTFILES_AICLIENT2API_API_KEY"
+
+# CI only: same secret names, dummy values, in a project the CI machine account alone can read
+[profiles.ci.providers.bw]
+type = "bitwarden-sm"
+project_id = "ef862a13-db73-4555-b320-b50a00fe4d6f"

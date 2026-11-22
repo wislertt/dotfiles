@@ -1,3 +1,4 @@
+import os
 import re
 import shutil
 from collections.abc import Mapping
@@ -30,6 +31,15 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
             *super().get_secret_fetch_fns(),
             *(cast("FetchFn[str | None]", FnoxFetchFn(key)) for key in SECRET_KEYS),
         )
+
+    def _ensure_bootstrap_secrets(self) -> None:
+        # CI has no terminal to paste the token into, so store it from the env
+        vault = self.vault()
+        for name in self.fnox_bootstrap_secrets:
+            value = os.environ.get(name)
+            if value and not self.ctx.dry_run and not vault.has_value(name):
+                vault.set(name, value)
+        super()._ensure_bootstrap_secrets()
 
     def _brewfiles(self) -> list[Path]:
         root = Path(__file__).parents[2]
