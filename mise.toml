@@ -1,6 +1,6 @@
 # Machine setup: `mise install`, then `bake setup-dev` (see README)
 [bootstrap]
-dotfile_groups = ["bin", "config", "home", "private-bin", "private-config", "private-home"]
+dotfile_groups = ["bin", "config", "home"]
 
 # Groups, not [dotfiles] entries: two [dotfiles] entries cannot share ~/.config with private.
 [dotfile_groups.bin]
@@ -13,18 +13,6 @@ target = "~/.config"
 
 [dotfile_groups.home]
 root = "src/home"
-target = "~"
-
-[dotfile_groups.private-bin]
-root = "private/src/bin"
-target = "~/.local/bin"
-
-[dotfile_groups.private-config]
-root = "private/src/config"
-target = "~/.config"
-
-[dotfile_groups.private-home]
-root = "private/src/home"
 target = "~"
 
 [settings.dotfiles]

@@ -20,7 +20,7 @@ Put each thing in exactly one home.
 
 - `bake secret refresh` only refreshes the cache.
 - A fetch function only fetches.
-- `bake apply` only links, then runs the assert (age key present, Bitwarden token stored, each declared secret resolves; no values printed, nothing written; resolving a secret may contact the secret store). On failure it exits nonzero: standalone `bake apply` says to run `bake setup-dev`; inside `bake setup-dev` it says to fix the listed items.
+- `bake apply` only links, then runs the assert (age key present, Bitwarden token stored, each declared secret resolves; no values printed, nothing written; resolving a secret may contact the secret store). On failure it exits nonzero and reports what is missing, without saying how to fix it.
 - Anything that starts or changes a service is a script in `src/bin/`.
 
 ## Three times
@@ -37,7 +37,7 @@ Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake a
 
 - `src/bin` links to `~/.local/bin`, `src/config` to `~/.config`, `src/home` to `~`. `src/lib` is not linked: scripts read it from the repo.
 - `private/src/{bin,config,home}` link to the same targets.
-- A new file in an existing group needs nothing. A new target needs a group in `mise.toml` (`[dotfile_groups.*]` and `bootstrap.dotfile_groups`).
+- A new file in an existing group needs nothing. A new target needs a group in `mise.toml` (`[dotfile_groups.*]` and `bootstrap.dotfile_groups`); private groups go in `mise.private.toml`, loaded with `-E private` when `private/` exists.
 - Zsh modules are `src/config/zsh/conf.d/NN-name.zsh`, loaded in order: 10 path, 20 tools, 30 aliases, 40 claude. Public modules use 10-49, private modules use 50-89. Pick the next free number in the range that fits.
 - `bake lint`: format and lint checks. `bake apply`, `bake setup-dev`, `bake setup-fnox`: as above.
 

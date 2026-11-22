@@ -1,12 +1,13 @@
 from collections.abc import Mapping
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import Any, ClassVar, cast
+from unittest.mock import patch
 
 from bake import command, console
 from bakelib.refreshable_cache import FetchFn, FnoxFetchFn
 from bakelib.refreshable_cache.fnox import run_fnox
 from bakelib.space import FnoxSpace, PythonSpace, SubmodulesUtils
-from bakelib.space.params import DurationsOption
+from bakelib.space import fnox as fnox_space
 from identify import identify
 
 # Names the scripts in src/bin read with `bake secret get`; the references live in fnox.toml
@@ -33,11 +34,21 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         tools["shellcheck"] = None
         return tools
 
-    __exclude_command_methods__: ClassVar[list[str]] = [
-        "test",
-        "test_all",
-        "test_integration",
-    ]
+    def _test(
+        self,
+        *,
+        tests_paths: str | list[str],
+        durations: int | None = None,
+        verbose: bool = False,
+        **_ignored: Any,
+    ) -> None:
+        # bakelib's coverage points at src/, which holds no Python here
+        super()._test(
+            tests_paths=tests_paths,
+            durations=durations,
+            verbose=verbose,
+            coverage_report=False,
+        )
 
     def _lint_fast(self) -> None:
         super()._lint_fast()
@@ -81,55 +92,65 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
     def _setup_project(self) -> None:
         super()._setup_project()
         # last step, so the assert runs once the age key and token exist
-        self._apply(in_setup=True)
+        self._apply()
 
     @command()
     def apply(self) -> None:
-        """Link dotfiles into ~ with mise (overwrites existing files), then check use-time needs"""
+        """Link dotfiles into ~ with mise (never overwrites a regular file), then assert use-time needs"""
         self._apply()
 
-    def _apply(self, *, in_setup: bool = False) -> None:
-        self.ctx.run("mise dotfiles apply --force")
-        self._assert_use(in_setup=in_setup)
+    def _apply(self) -> None:
+        self._run_mise_dotfiles_apply()
+        self._assert_dotfiles_readiness()
 
-    def _assert_use(self, *, in_setup: bool) -> None:
-        # Read-only: reports names only, never values, and writes nothing
-        problems: list[str] = []
-        if not self._age_key_file().exists():
-            problems.append(f"age key not found: {self._age_key_file()}")
-        else:
-            vault = self.vault()
-            for name in self.fnox_bootstrap_secrets:
-                if not vault.has_value(name):
-                    problems.append(f"{name} not stored")
-            if not problems:
-                problems.extend(
-                    f"secret {key} does not resolve"
-                    for key in SECRET_KEYS
-                    if not self._secret_resolves(key)
-                )
-        if problems:
-            for problem in problems:
-                console.error(problem)
-            # setup-dev already ran the setup steps, so pointing back at it would loop
-            hint = (
-                "fix the items above (rerun `bake setup-fnox`, or check the Bitwarden token and secret names)"
-                if in_setup
-                else "run `bake setup-dev`"
+    def _run_mise_dotfiles_apply(self) -> None:
+        # No --force and no --yes: a conflicting regular file makes mise exit non-zero
+        cmd = ["mise", "dotfiles", "apply"]
+        if (Path(__file__).parent / "private" / "src").is_dir():
+            cmd[1:1] = ["-E", "private"]
+        if self.ctx.run(cmd, check=False).returncode != 0:
+            console.error(
+                "Apply failed. If the output above names files that already exist and are not managed, "
+                "move or delete each one, then rerun `bake apply`. "
+                "To overwrite on purpose, run `mise dotfiles apply --force` yourself (not via bake)."
             )
-            console.error(f"Assert failed: {hint}")
+            raise SystemExit(1)
+
+    def _assert_dotfiles_readiness(self) -> None:
+        # Read-only: reports names only, never values, and writes nothing
+        failures = self._bakelib_assert_failures()
+        if not failures:
+            failures = self._unresolved_secret_failures()
+        if failures:
+            for failure in failures:
+                console.error(failure)
+            console.error("Assert failed")
             raise SystemExit(1)
         console.success("Assert passed")
+
+    def _bakelib_assert_failures(self) -> list[str]:
+        # bakelib's asserts only print, so collect what they report
+        failures: list[str] = []
+        with (
+            patch.object(fnox_space.console, "error", side_effect=failures.append),
+            patch.object(fnox_space.console, "cmd"),
+        ):
+            self._assert_age_key()
+            self._assert_bootstrap_secrets()
+        return failures
+
+    def _unresolved_secret_failures(self) -> list[str]:
+        return [
+            f"secret {key} does not resolve"
+            for key in SECRET_KEYS
+            if not self._secret_resolves(key)
+        ]
 
     def _secret_resolves(self, key: str) -> bool:
         if self.vault().has_value(key):
             return True
         # not cached yet (fresh Mac): ask fnox directly, which does not write the cache
         return run_fnox(["--no-daemon", "get", key]).returncode == 0
-
-    def test(self, durations: DurationsOption = None) -> None:
-        # assert-setup-dev calls test(); a dotfiles repo has nothing to test
-        del durations
 
 
 bakebook = MyBakebook()
