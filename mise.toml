@@ -1,5 +1,40 @@
+# Machine setup: mise -C <vault>/repos/wislertt/dotfiles bootstrap
+[bootstrap]
+dotfile_groups = ["bin", "config", "home", "private-bin", "private-config", "private-home"]
+
+# Groups, not [dotfiles] entries: two [dotfiles] entries cannot share ~/.config with private.
+[dotfile_groups.bin]
+root = "src/bin"
+target = "~/.local/bin"
+
+[dotfile_groups.config]
+root = "src/config"
+target = "~/.config"
+
+[dotfile_groups.home]
+root = "src/home"
+target = "~"
+
+[dotfile_groups.private-bin]
+root = "private/src/bin"
+target = "~/.local/bin"
+
+[dotfile_groups.private-config]
+root = "private/src/config"
+target = "~/.config"
+
+[dotfile_groups.private-home]
+root = "private/src/home"
+target = "~"
+
+[settings.dotfiles]
+root = "."
+
 [tools]
+age = "latest"
 bun = "latest"
+fnox = "latest"
+"npm:oxfmt" = "latest"
 "pipx:bakefile" = { version = "latest", extras = "locked" }
 "pipx:pre-commit" = "latest"
 "pipx:toml-sort" = "latest"
