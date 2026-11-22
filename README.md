@@ -10,4 +10,4 @@ Machine setup for my computers, tested only on macOS. Private parts live in the 
 
 ## Everyday
 
-`bake apply` links the dotfiles into `~`, then runs a preflight (age key present, Bitwarden token stored, each declared secret resolves). It prints no secret values and writes nothing, but resolving a secret may contact the secret store. If the preflight fails, run `bake setup-dev`.
+`bake apply` links the dotfiles into `~`, then asserts (age key present, Bitwarden token stored, each declared secret resolves). It prints no secret values and writes nothing, but resolving a secret may contact the secret store. If the assert fails, run `bake setup-dev`.

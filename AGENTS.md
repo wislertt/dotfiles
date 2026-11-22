@@ -20,7 +20,7 @@ Put each thing in exactly one home.
 
 - `bake secret refresh` only refreshes the cache.
 - A fetch function only fetches.
-- `bake apply` only links, then runs the preflight (age key present, Bitwarden token stored, each declared secret resolves; no values printed, nothing written; resolving a secret may contact the secret store). On failure it exits nonzero: standalone `bake apply` says to run `bake setup-dev`; inside `bake setup-dev` it says to fix the listed items.
+- `bake apply` only links, then runs the assert (age key present, Bitwarden token stored, each declared secret resolves; no values printed, nothing written; resolving a secret may contact the secret store). On failure it exits nonzero: standalone `bake apply` says to run `bake setup-dev`; inside `bake setup-dev` it says to fix the listed items.
 - Anything that starts or changes a service is a script in `src/bin/`.
 
 ## Three times

@@ -80,7 +80,7 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
 
     def _setup_project(self) -> None:
         super()._setup_project()
-        # last step, so the preflight runs once the age key and token exist
+        # last step, so the assert runs once the age key and token exist
         self._apply(in_setup=True)
 
     @command()
@@ -90,9 +90,9 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
 
     def _apply(self, *, in_setup: bool = False) -> None:
         self.ctx.run("mise dotfiles apply --force")
-        self._preflight(in_setup=in_setup)
+        self._assert_use(in_setup=in_setup)
 
-    def _preflight(self, *, in_setup: bool) -> None:
+    def _assert_use(self, *, in_setup: bool) -> None:
         # Read-only: reports names only, never values, and writes nothing
         problems: list[str] = []
         if not self._age_key_file().exists():
@@ -117,9 +117,9 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
                 if in_setup
                 else "run `bake setup-dev`"
             )
-            console.error(f"Preflight failed: {hint}")
+            console.error(f"Assert failed: {hint}")
             raise SystemExit(1)
-        console.success("Preflight passed")
+        console.success("Assert passed")
 
     def _secret_resolves(self, key: str) -> bool:
         if self.vault().has_value(key):
