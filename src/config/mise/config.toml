@@ -1,0 +1,2 @@
+# Global tools: add one only when a linked script or the shell needs it from any directory
+[tools]
