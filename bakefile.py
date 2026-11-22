@@ -8,7 +8,7 @@ from bakelib.space import FnoxSpace, PythonSpace, SubmodulesUtils
 from bakelib.space.params import DurationsOption
 
 # Names the scripts in src/bin read with `bake secret get`; the references live in fnox.toml
-SECRET_KEYS = ("CLAUDE_GLM_AUTH_TOKEN",)
+SECRET_KEYS = ("CLAUDE_GLM_AUTH_TOKEN", "AICLIENT2API_API_KEY")
 
 
 class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):

@@ -6,9 +6,23 @@ container="aiclient2api"
 image="justlikemaki/aiclient-2-api"
 port=3000
 data_dir="$HOME/aiclient2api"
+secret="AICLIENT2API_API_KEY"
+
+# The proxy key comes from bake (fnox) at start, so no config file holds it.
+repo="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
+if ! api_key="$(bake -C "$repo" secret get "$secret" 2>/dev/null)" || [ -z "$api_key" ]; then
+    echo "Error: $secret not available. Run: bake -C $repo setup-fnox" >&2
+    exit 1
+fi
+# The key is fixed when the container is created, so a label tells a rotated key apart.
+key_id="$(printf %s "$api_key" | shasum -a 256 | cut -c1-12)"
 
 if command -v colima >/dev/null 2>&1; then
     colima status >/dev/null 2>&1 || colima start
+fi
+
+if [ "$(docker inspect -f '{{index .Config.Labels "key-id"}}' "$container" 2>/dev/null)" != "$key_id" ]; then
+    docker rm -f "$container" >/dev/null 2>&1 || true
 fi
 
 if [ "$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" = "true" ]; then
@@ -29,7 +43,9 @@ if docker inspect "$container" >/dev/null 2>&1; then
 else
     mkdir -p "$data_dir"/{configs,plugins,.private}
     # 19876-19880 are OAuth callbacks. Add e.g. -p 127.0.0.1:1455:1455 for another provider.
-    docker run -d --name "$container" --restart=no \
+    # ARGS is passed by name so the key stays out of the process list
+    ARGS="--api-key $api_key" docker run -d --name "$container" --restart=no \
+        -e ARGS --label "key-id=$key_id" \
         -p "127.0.0.1:$port:3000" -p 127.0.0.1:19876-19880:19876-19880 \
         -v "$data_dir/configs:/app/configs" \
         -v "$data_dir/plugins:/app/src/plugins-user" \
