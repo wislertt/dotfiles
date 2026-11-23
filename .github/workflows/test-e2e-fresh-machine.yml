@@ -1,4 +1,4 @@
-name: fresh-machine
+name: test-e2e-fresh-machine
 
 on:
     workflow_call:
@@ -10,7 +10,7 @@ permissions:
     contents: read
 
 jobs:
-    fresh-machine:
+    test-e2e-fresh-machine:
         strategy:
             fail-fast: false
             matrix:
@@ -49,6 +49,9 @@ jobs:
 
             - name: setup-dev
               run: bake setup-dev
+
+            - name: assert-setup-dev
+              run: bake assert-setup-dev
 
             - name: apply-again-and-check-links-unchanged
               run: |
