@@ -46,7 +46,7 @@ _Avoid_: Temp, cache (a cache is one kind of disposable)
 
 ### Verification
 
-**Fresh-machine job**:
+**Fresh-machine job** (workflow `test-e2e-fresh-machine`):
 The CI run that follows the fresh-machine path (install the tool manager, Setup, Apply) on a clean runner, with the same commands as a real machine and throwaway secret values. It proves the public repo works without the private companion.
 _Avoid_: Bootstrap job, install test
 

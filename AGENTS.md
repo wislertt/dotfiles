@@ -38,6 +38,7 @@ Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake a
 
 - `src/bin` links to `~/.local/bin`, `src/config` to `~/.config`, `src/home` to `~`. `src/lib` is not linked: scripts and `bake` read it from the repo (shared env files, the Brewfiles).
 - `private/src/{bin,config,home}` link to the same targets.
+- The repo root itself links to `~/.config/bake` (a `[dotfiles]` entry in `mise.toml`), so this bakefile is the global bake: plain `bake` outside any project uses it, and `bake -g` uses it inside one.
 - A new file in an existing group needs nothing. A new target needs a group in `mise.toml` (`[dotfile_groups.*]` and `bootstrap.dotfile_groups`); private groups go in `mise.private.toml`, loaded with `-E private` when `private/` exists.
 - Zsh modules are `src/config/zsh/conf.d/NN-name.zsh`, loaded in order: 10 path, 20 tools, 30 aliases, 40 claude. Public modules use 10-49, private modules use 50-89. Pick the next free number in the range that fits.
 - `bake lint`: format and lint checks. `bake apply`, `bake setup-dev`, `bake setup-fnox`, `bake update`: as above.
@@ -46,6 +47,7 @@ Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake a
 ## Conduct
 
 - Do not print values from a secret-adjacent file. Check by length or hash, or copy to the clipboard.
+- A temporary secret the agent needs (for example a CI token) goes into the gitignored `fnox.local.toml`, age-encrypted, never into `fnox.toml` (a bare `fnox set` writes there). The user stores it from the clipboard (`! pbpaste | fnox -c fnox.local.toml set -p bake-cache-age NAME_TMP`). The agent reads it with `fnox -c fnox.local.toml get NAME_TMP`, never prints it, and removes it when done (`fnox -c fnox.local.toml remove NAME_TMP`).
 - Verify before claiming. Run it or read the file.
 - Do not delete or stop something because it looks unused. Look at the target and ask.
 - Do not name the account or employer behind a private choice in any public file.

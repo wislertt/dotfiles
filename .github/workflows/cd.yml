@@ -45,3 +45,7 @@ jobs:
 
     pre-commit:
         uses: ./.github/workflows/pre-commit.yml
+
+    test-e2e-fresh-machine:
+        uses: ./.github/workflows/test-e2e-fresh-machine.yml
+        secrets: inherit

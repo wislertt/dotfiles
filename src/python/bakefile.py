@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import ClassVar, cast
 from unittest.mock import patch
 
+import typer
 from bake import command, console
 from bake.utils.settings import PlatformType
 from bakelib.refreshable_cache import FetchFn, FnoxFetchFn
@@ -57,6 +58,15 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         super()._update_platform_tools(platform)
         self._brew_bundle(platform, "upgrade")
 
+    def _sync_submodules(self, frozen: bool = False) -> None:
+        # the public repo must work alone, so an unreachable private companion is not fatal
+        try:
+            super()._sync_submodules(frozen=frozen)
+        except typer.Exit:
+            console.warning(
+                "Private companion not available, continuing with public only"
+            )
+
     def _setup_tools(self) -> None:
         # bakelib's default ends with `mise upgrade` and `uv python upgrade`; those belong to Update
         self._add_mise_tools()
@@ -66,13 +76,31 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         self._sync_submodules(frozen=True)
 
     def _get_mise_tools(self) -> set[str]:
-        return {*super()._get_mise_tools(), "jq", "shellcheck"}
+        return {
+            *super()._get_mise_tools(),
+            "bitwarden-secrets-manager",
+            "jq",
+            "shellcheck",
+        }
 
     def _get_required_cli_tools(self) -> dict[str, set[Path] | None]:
         tools = super()._get_required_cli_tools()
+        tools["bws"] = None  # fnox shells out to it for every Bitwarden secret
         tools["jq"] = None
         tools["shellcheck"] = None
         return tools
+
+    def _assert_tools(self) -> None:
+        super()._assert_tools()
+        # bakelib only prints a missing tool; the assert must fail so CI goes red
+        missing = [
+            name
+            for name in self._get_required_cli_tools()
+            if not self.ctx.dry_run and shutil.which(name) is None
+        ]
+        if missing:
+            console.error(f"required tools missing: {', '.join(missing)}")
+            raise SystemExit(1)
 
     def _lint_fast(self) -> None:
         super()._lint_fast()
