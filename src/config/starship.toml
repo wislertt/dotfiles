@@ -1,9 +1,0 @@
-[conda]
-truncation_length = 2
-ignore_base = false
-
-[gcloud]
-disabled = true
-
-[directory]
-truncation_length = 4

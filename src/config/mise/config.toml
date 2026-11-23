@@ -1,6 +1,2 @@
 # Global tools: add one only when a linked script or the shell needs it from any directory
 [tools]
-claude-code = "latest"
-gh = "latest"
-ripgrep = "latest"
-starship = "latest"
