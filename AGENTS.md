@@ -46,6 +46,7 @@ Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake a
 ## Conduct
 
 - Do not print values from a secret-adjacent file. Check by length or hash, or copy to the clipboard.
+- A temporary secret the agent needs (for example a CI token) goes into the gitignored `fnox.local.toml`, age-encrypted, never into `fnox.toml` (a bare `fnox set` writes there). The user stores it from the clipboard (`! pbpaste | fnox -c fnox.local.toml set -p bake-cache-age NAME_TMP`). The agent reads it with `fnox -c fnox.local.toml get NAME_TMP`, never prints it, and removes it when done (`fnox -c fnox.local.toml remove NAME_TMP`).
 - Verify before claiming. Run it or read the file.
 - Do not delete or stop something because it looks unused. Look at the target and ask.
 - Do not name the account or employer behind a private choice in any public file.
