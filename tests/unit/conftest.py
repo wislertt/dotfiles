@@ -15,7 +15,6 @@ class FakeCtx:
 
     def __init__(self, returncode: int = 0) -> None:
         self.returncode = returncode
-        self.dry_run = False
         self.commands: list[list[str]] = []
         self.envs: list[dict[str, str]] = []
 
@@ -34,14 +33,9 @@ class FakeVault:
 
     def __init__(self) -> None:
         self.values: set[str] = set()
-        self.stored: dict[str, str] = {}
 
     def has_value(self, key: str) -> bool:
         return key in self.values
-
-    def set(self, key: str, value: str) -> None:
-        self.values.add(key)
-        self.stored[key] = value
 
 
 @pytest.fixture

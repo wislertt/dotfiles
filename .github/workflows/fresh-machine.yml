@@ -39,14 +39,18 @@ jobs:
               # same as the bakefile repo: the real brew upgrade runs but skips the runner's own formulas
               run: brew pin $(brew list --formula)
 
+            - name: store-bitwarden-token
+              # no terminal to paste into, so store it the way a person would with bake secret set
+              run: |
+                  bake setup-fnox
+                  bake secret set FNOX_BWS_ACCESS_TOKEN "$BWS_TOKEN"
+              env:
+                  BWS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN_DEV }}
+
             - name: setup-dev
               run: bake setup-dev
-              env:
-                  FNOX_BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN_DEV }}
 
             - name: apply-again-and-check-links-unchanged
-              env:
-                  FNOX_BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN_DEV }}
               run: |
                   find "$HOME" -maxdepth 6 -type l -lname "${{ github.workspace }}/*" | sort > links-first.txt
                   bake apply
