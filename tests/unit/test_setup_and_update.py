@@ -1,9 +1,7 @@
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from bake.utils.settings import PlatformType
-from bakelib import BaseSpace
 
 from src.python import bakefile
 from tests.unit.conftest import FakeCtx
@@ -62,18 +60,14 @@ def test_setup_runs_no_brew_off_macos(
 
 
 @pytest.mark.parametrize("step", ["_setup_platform_tools", "_update_platform_tools"])
-def test_platform_step_runs_bakelibs_default_before_the_brewfiles(
+def test_platform_step_runs_only_the_brewfiles(
     bakebook: bakefile.MyBakebook, fake_ctx: FakeCtx, brewfiles: Path, step: str
 ) -> None:
+    # Homebrew holds only what the Brewfiles declare, so no blanket `brew upgrade`
     del brewfiles
-    calls: list[str] = []
-    with patch.object(
-        BaseSpace, step, lambda _self, _platform: calls.append("default")
-    ):
-        fake_ctx.commands.clear()
-        getattr(bakebook, step)("macos")
-        calls += ["bundle" for _ in _bundles(fake_ctx)]
-    assert calls == ["default", "bundle", "bundle"]
+    getattr(bakebook, step)("macos")
+    assert fake_ctx.commands == _bundles(fake_ctx)
+    assert len(fake_ctx.commands) == 2
 
 
 def test_setup_tools_never_upgrade(
@@ -152,30 +146,22 @@ def test_signing_key_step_keeps_a_key_already_in_the_keyring(
     assert len(_gpg(fake_ctx)) == 1
 
 
-def test_signing_key_step_creates_a_missing_key_from_name_and_email(
-    bakebook: bakefile.MyBakebook,
-    fake_ctx: FakeCtx,
-    monkeypatch: pytest.MonkeyPatch,
+def test_signing_key_step_creates_a_missing_key_without_a_passphrase(
+    bakebook: bakefile.MyBakebook, fake_ctx: FakeCtx
 ) -> None:
     _signing(fake_ctx)
-    monkeypatch.setattr(bakefile.sys.stdin, "isatty", lambda: True)
-    with patch.object(bakefile.subprocess, "run") as run:
-        bakebook._ensure_signing_key()
-    run.assert_called_once_with(
-        ["gpg", "--quick-generate-key", "Ann Lee <a@b.c>", "ed25519", "sign", "0"],
-        check=True,
-    )
-
-
-def test_signing_key_step_creates_nothing_without_a_terminal(
-    bakebook: bakefile.MyBakebook,
-    fake_ctx: FakeCtx,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    _signing(fake_ctx)
-    monkeypatch.setattr(bakefile.sys.stdin, "isatty", lambda: False)
     bakebook._ensure_signing_key()
-    assert len(_gpg(fake_ctx)) == 1
+    assert _gpg(fake_ctx)[-1] == [
+        "gpg",
+        "--batch",
+        "--passphrase",
+        "",
+        "--quick-generate-key",
+        "Ann Lee <a@b.c>",
+        "ed25519",
+        "sign",
+        "0",
+    ]
 
 
 def test_signing_key_step_does_nothing_on_a_dry_run(

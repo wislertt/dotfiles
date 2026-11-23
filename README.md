@@ -24,13 +24,13 @@ Terms are in [GLOSSARY.md](GLOSSARY.md), decisions in [docs/adr/](docs/adr/).
 
 1. Install [mise](https://mise.jdx.dev).
 2. `mise install` (brings `bake`).
-3. `bake setup-dev`: installs tools and, on macOS, the apps in `src/lib/Brewfile` (it also upgrades Homebrew for now), creates the age key, stores the Bitwarden token, then runs `bake apply` as its last step.
+3. `bake setup-dev`: installs tools and, on macOS, the apps in `src/lib/Brewfile`, creates the age key, stores the Bitwarden token, then runs `bake apply` as its last step.
 
 The same three commands run in CI as the Fresh-machine job (workflow `test-e2e-fresh-machine`) on macOS and Linux, with throwaway secret values and without the private companion.
 
 ## macOS-only
 
-The Brewfile apps (`src/lib/Brewfile`, casks only) are installed on macOS and skipped elsewhere. Setup also upgrades Homebrew on macOS for now (TODO in `bakefile.py`). Everything else is meant to be portable.
+The Brewfile apps (`src/lib/Brewfile`, casks plus mise itself) are installed on macOS and skipped elsewhere. Everything else is meant to be portable.
 
 ## Everyday
 

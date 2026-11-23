@@ -28,7 +28,7 @@ Put each thing in exactly one home.
 Every new thing is assigned to one of these when it is added, and captured in that step.
 
 - **Apply**: `bake apply`, links dotfiles.
-- **Setup**: `bake setup-dev`, installs tools from mise (`mise.toml`) and, on macOS, the casks in `src/lib/Brewfile` and `private/src/lib/Brewfile`; mise tools are not upgraded. For now bakelib also upgrades Homebrew here (TODO: drop once nothing in Homebrew is installed by hand). Includes `bake setup-fnox`, and ends with `bake apply`.
+- **Setup**: `bake setup-dev`, installs tools from mise (`mise.toml`) and, on macOS, the casks in `src/lib/Brewfile` and `private/src/lib/Brewfile`; mise tools are not upgraded. Includes `bake setup-fnox`, and ends with `bake apply`.
 - **Update**: `bake update`, on demand. Upgrades tools and, on macOS, Brewfile apps.
 - **Use**: not a bake command. Whenever something that invokes our dotfiles runs (a linked script, a shell start).
 
@@ -43,7 +43,7 @@ Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake a
 - Zsh modules are `src/config/zsh/conf.d/NN-name.zsh`, loaded in order: 10 path, 20 tools, 30 aliases, 40 claude. Public modules use 10-49, private modules use 50-89. Pick the next free number in the range that fits.
 - `bake lint`: format and lint checks. `bake apply`, `bake setup-dev`, `bake setup-fnox`, `bake update`: as above.
 - `bake duplicates`: read-only report of copies of a declared mise tool elsewhere on `PATH`. It removes nothing; Apply, Setup and Update never remove either.
-- A command-line tool goes in `mise.toml` at `latest`; pin a version there only when a release breaks something, with a one-line comment why. A macOS GUI app goes in a Brewfile as a `cask` line, and nowhere else; `bake lint` checks both.
+- A command-line tool goes in `mise.toml` at `latest`; pin a version there only when a release breaks something, with a one-line comment why. A Python command-line tool needed from any directory goes in `src/config/mise/config.toml` as `"pipx:<name>"` (mise installs it with uv), never with `uv tool install`. A macOS GUI app goes in a Brewfile as a `cask` line, and nowhere else; the only other Brewfile line is `brew "mise"` (the bootstrap). `bake lint` checks both.
 
 ## Conduct
 

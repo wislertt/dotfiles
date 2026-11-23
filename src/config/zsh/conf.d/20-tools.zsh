@@ -24,6 +24,9 @@ command -v launchctl >/dev/null && launchctl setenv PATH "$PATH" 2>/dev/null
 # mise: activate managed tool versions
 eval "$(mise activate zsh)"
 
+# git-credential-manager: no default store on Linux (macOS uses the Keychain)
+[[ $OSTYPE == linux* ]] && export GCM_CREDENTIAL_STORE=secretservice
+
 # gh: expose the GitHub CLI login as GITHUB_TOKEN
 export GITHUB_TOKEN="$(gh auth token 2>/dev/null)"
 

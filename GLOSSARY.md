@@ -22,6 +22,18 @@ _Avoid_: Upgrade, refresh (Refresh is for secrets)
 Run with `bake duplicates`, on demand and not one of the four times. A read-only report of copies of a declared mise tool that sit elsewhere on `PATH` (a Homebrew `jq` after `jq` moved to `mise.toml`). It looks at the binaries the mise copy ships, so it needs no knowledge of which package manager owns the other copy. It removes nothing: the owner removes each copy with the manager that owns it, and the path says which. System directories, mise shims and project virtualenvs are not reported.
 _Avoid_: Dedupe, clean (`bake clean` is for files in the repo), prune
 
+**Tidy**:
+Run with `bake tidy`, on demand and not one of the four times. Lists the Strays on the machine, then asks about each one and removes it with the manager that owns it; anything needing an administrator, and apps, it only names. `bake tidy --check` lists them and fails if there are any, removing nothing.
+_Avoid_: Clean (`bake clean` is for files in the repo), prune, dedupe
+
+**Stray**:
+Something installed on the machine that no declaration accounts for: not in a mise config, not in a Brewfile, and not on a keep list. A Duplicate is one kind of Stray.
+_Avoid_: Orphan, leftover, junk
+
+**Keep list**:
+The record of things deliberately left installed without a declaration, each with a one-line reason, so Tidy passes over them. A private keep list in the private companion repo holds those that reveal an account, employer or work setup.
+_Avoid_: Allowlist, ignore list, exceptions
+
 **Use**:
 Whenever something that invokes our dotfiles runs, such as a linked script or a shell start. Not a command: it happens on its own, and a failure here is a surprise.
 _Avoid_: Run time, launch
@@ -41,7 +53,7 @@ A check that reports what is missing and changes nothing, the read-only counterp
 _Avoid_: Preflight, doctor, health check
 
 **Brewfile**:
-The macOS-only list of GUI apps that Setup installs and Update upgrades. Casks only: anything else the tool manager installs. A private Brewfile in the private companion repo holds apps that reveal an account or employer.
+The macOS-only list of GUI apps that Setup installs and Update upgrades. Casks only, plus mise itself (the bootstrap, so Update upgrades it): anything else the tool manager installs. A private Brewfile in the private companion repo holds apps that reveal an account or employer.
 _Avoid_: Package list, app manifest
 
 **Disposable**:

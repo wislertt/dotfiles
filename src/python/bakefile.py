@@ -1,8 +1,6 @@
 import os
 import re
 import shutil
-import subprocess
-import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar, cast
@@ -25,8 +23,8 @@ SECRET_KEYS = ("CLAUDE_GLM_AUTH_TOKEN", "AICLIENT2API_API_KEY")
 # System copies cannot be removed, so they are not reported
 SYSTEM_BIN_DIRS = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
 
-# A Brewfile holds casks only (ADR 0002): anything else belongs to the tool manager
-CASK_LINE = re.compile(r"""^cask (["'])[^"']+\1(,.*)?$""")
+# A Brewfile holds casks only (ADR 0002), plus mise: the bootstrap, so Update upgrades it
+CASK_LINE = re.compile(r"""^(cask (["'])[^"']+\2(,.*)?|brew (["'])mise\4)$""")
 
 
 class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
@@ -56,14 +54,11 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         for brewfile in brewfiles:
             self.ctx.run(["brew", "bundle", verb, "--file", str(brewfile)])
 
+    # No super(): bakelib's default runs a blanket `brew upgrade`, and Homebrew holds only the Brewfiles
     def _setup_platform_tools(self, platform: PlatformType) -> None:
-        # TODO: drop super() once no Homebrew package is installed by hand (move each to mise or a Brewfile)
-        super()._setup_platform_tools(platform)
         self._brew_bundle(platform, "install")
 
     def _update_platform_tools(self, platform: PlatformType) -> None:
-        # TODO: drop super() once no Homebrew package is installed by hand (move each to mise or a Brewfile)
-        super()._update_platform_tools(platform)
         self._brew_bundle(platform, "upgrade")
 
     def _sync_submodules(self, frozen: bool = False) -> None:
@@ -139,7 +134,7 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
                 text = line.strip()
                 if text and not text.startswith("#") and not CASK_LINE.match(text):
                     raise SystemExit(
-                        f'{brewfile.name}:{number}: only `cask "name"` lines allowed'
+                        f'{brewfile.name}:{number}: only `cask "name"` lines (and `brew "mise"`) allowed'
                     )
             if shutil.which("brew"):
                 self.ctx.run(
@@ -186,17 +181,20 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         if have.returncode == 0:
             console.success("GPG signing key present")
             return
-        if not sys.stdin.isatty():
-            console.warning(
-                "No GPG signing key and no terminal to set a passphrase; run `bake setup-dev` again from one"
-            )
-            return
         name = self._git_config("user.name")
-        # the signing key is the email in angle brackets, which becomes part of the new key's user ID
-        # not self.ctx.run: its pty has no controlling terminal, so gpg fails opening /dev/tty
-        subprocess.run(
-            ["gpg", "--quick-generate-key", f"{name} {key}", "ed25519", "sign", "0"],
-            check=True,
+        # No passphrase, so no pinentry: commits from editors and agents have no terminal to prompt in
+        self.ctx.run(
+            [
+                "gpg",
+                "--batch",
+                "--passphrase",
+                "",
+                "--quick-generate-key",
+                f"{name} {key}",
+                "ed25519",
+                "sign",
+                "0",
+            ]
         )
         console.success("GPG signing key created")
         console.info(
