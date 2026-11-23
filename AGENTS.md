@@ -1,6 +1,6 @@
 # dotfiles
 
-Public dotfiles, linked with mise and driven by `bake`. macOS is the only tested platform; keep new config portable where it is cheap, and guard anything macOS-only. Rationale: `<vault>/repos/wislertt/agent-home/wiki/00-gtd/01-action-support/dotfiles/1-raw/design.md`. Terms: [GLOSSARY.md](GLOSSARY.md).
+Public dotfiles, linked with mise and driven by `bake`. macOS and Linux are tested in CI (the Fresh-machine job); keep new config portable where it is cheap, and guard anything macOS-only (the Brewfile apps are macOS-only). Rationale: `<vault>/repos/wislertt/agent-home/wiki/00-gtd/01-action-support/dotfiles/1-raw/design.md`. Terms: [GLOSSARY.md](GLOSSARY.md).
 
 ## Four homes
 
@@ -51,3 +51,17 @@ Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake a
 - Verify before claiming. Run it or read the file.
 - Do not delete or stop something because it looks unused. Look at the target and ask.
 - Do not name the account or employer behind a private choice in any public file.
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown under `.tracker/` (committed), never `.scratch/`; GitHub Issues on `wislertt/dotfiles` only when I ask for it. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single context: `GLOSSARY.md` and `docs/adr/` at the root. See `docs/agents/domain.md`.
