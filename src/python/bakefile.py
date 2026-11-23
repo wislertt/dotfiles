@@ -2,7 +2,7 @@ import re
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import Annotated, ClassVar, cast
 from unittest.mock import patch
 
 import typer
@@ -13,6 +13,8 @@ from bakelib.refreshable_cache.fnox import run_fnox
 from bakelib.space import FnoxSpace, PythonSpace, SubmodulesUtils
 from bakelib.space import fnox as fnox_space
 from identify import identify
+
+from src.python import dedupe as dedupe_lib
 
 # Names the scripts in src/bin read with `bake secret get`; the references live in fnox.toml
 SECRET_KEYS = ("CLAUDE_GLM_AUTH_TOKEN", "AICLIENT2API_API_KEY")
@@ -159,6 +161,79 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         super()._setup_project()
         # last step, so the assert runs once the age key and token exist
         self._apply()
+
+    @command(help="List installs a declared tool has replaced; remove them with --yes")
+    def dedupe(
+        self,
+        yes: Annotated[
+            bool, typer.Option("--yes", help="Remove the listed duplicates")
+        ] = False,
+    ) -> None:
+        self._dedupe(yes)
+
+    def _dedupe(self, yes: bool) -> None:
+        mise_tools = dedupe_lib.declared_mise_tools(Path(__file__).parents[2])
+        casks = dedupe_lib.declared_casks(self._brewfiles())
+        installed_casks = dedupe_lib.brew_casks(self.ctx).installed()
+
+        def in_mise(name: str) -> bool:
+            # `mise where` needs the declared key ("npm:oxfmt"), not the bare name
+            return name in mise_tools and self._mise_has(mise_tools[name])
+
+        def formula_side_replaced(name: str) -> bool:
+            return in_mise(name) or (name in casks and name in installed_casks)
+
+        # a Brewfile cask is the replacement for a formula, never a duplicate of itself
+        passes = (
+            (
+                [
+                    dedupe_lib.brew_formulae(self.ctx),
+                    dedupe_lib.npm_global(self.ctx),
+                    dedupe_lib.pipx_global(self.ctx),
+                    dedupe_lib.cargo_global(self.ctx),
+                    dedupe_lib.go_global(self.ctx),
+                ],
+                set(mise_tools) | casks,
+                formula_side_replaced,
+            ),
+            ([dedupe_lib.brew_casks(self.ctx)], set(mise_tools), in_mise),
+        )
+        found: list[dedupe_lib.Duplicate] = []
+        removed: list[dedupe_lib.Duplicate] = []
+        skipped: list[dedupe_lib.Duplicate] = []
+        for managers, declared, replaced in passes:
+            present = [m for m in managers if shutil.which(m.binary)]
+            report = dedupe_lib.dedupe(
+                present, declared, replaced, yes, dedupe_lib.ALIASES
+            )
+            found += report.duplicates
+            removed += report.removed
+            skipped += report.skipped
+        for d in found:
+            console.echo(f"{d.manager}: {d.name}")
+        if not found:
+            console.success("No duplicates")
+        elif not yes:
+            console.warning(
+                f"{len(found)} duplicate(s); run `bake dedupe --yes` to remove"
+            )
+        elif skipped:
+            names = ", ".join(f"{d.manager}: {d.name}" for d in skipped)
+            console.warning(
+                f"Removed {len(removed)}; the manager refused (probably still needed): {names}"
+            )
+        else:
+            console.success(f"Removed {len(removed)}")
+
+    def _mise_has(self, key: str) -> bool:
+        result = self.ctx.run(
+            ["mise", "where", key],
+            capture_output=True,
+            stream=False,
+            echo=False,
+            check=False,
+        )
+        return result.returncode == 0
 
     @command()
     def apply(self) -> None:

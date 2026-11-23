@@ -13,8 +13,14 @@ from src.python import bakefile
 class FakeCtx:
     """Stands in for the bake command context: records commands, runs none."""
 
-    def __init__(self, returncode: int = 0) -> None:
+    def __init__(
+        self, returncode: int = 0, stdout: dict[str, str] | None = None
+    ) -> None:
         self.returncode = returncode
+        self.stdout = (
+            stdout or {}
+        )  # canned output, keyed by the command joined with spaces
+        self.failing: set[str] = set()  # commands (joined with spaces) that exit 1
         self.dry_run = False
         self.commands: list[list[str]] = []
         self.envs: list[dict[str, str]] = []
@@ -22,11 +28,11 @@ class FakeCtx:
     def run(self, cmd: list[str] | str, **kwargs: Any) -> SimpleNamespace:
         self.commands.append(cmd.split() if isinstance(cmd, str) else cmd)
         self.envs.append(kwargs.get("env") or {})
-        if kwargs.get("check", True) and self.returncode:
-            raise typer.Exit(
-                self.returncode
-            )  # like bake, raising on failure by default
-        return SimpleNamespace(returncode=self.returncode, stdout="")
+        key = " ".join(self.commands[-1])
+        returncode = 1 if key in self.failing else self.returncode
+        if kwargs.get("check", True) and returncode:
+            raise typer.Exit(returncode)  # like bake, raising on failure by default
+        return SimpleNamespace(returncode=returncode, stdout=self.stdout.get(key, ""))
 
 
 class FakeVault:
