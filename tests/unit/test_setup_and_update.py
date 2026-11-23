@@ -116,3 +116,11 @@ def test_setup_fails_clearly_without_homebrew(
     with pytest.raises(SystemExit, match="Homebrew"):
         bakebook._setup_platform_tools("macos")
     assert _bundles(fake_ctx) == []
+
+
+def test_setup_survives_an_unreachable_private_submodule(
+    bakebook: bakefile.MyBakebook, fake_ctx: FakeCtx
+) -> None:
+    fake_ctx.returncode = 1
+    bakebook._sync_submodules(frozen=True)
+    assert ["git", "submodule", "update"] == fake_ctx.commands[0][:3]

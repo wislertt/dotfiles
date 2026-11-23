@@ -4,7 +4,8 @@ version = "0.0.0"
 requires-python = ">=3.14"
 dependencies = [
   "bakefile[lib]>=0.0.85",
-  "identify>=2.6.20"
+  "identify>=2.6.20",
+  "typer>=0.15.0"
 ]
 
 [dependency-groups]

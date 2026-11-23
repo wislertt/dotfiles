@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import ClassVar, cast
 from unittest.mock import patch
 
+import typer
 from bake import command, console
 from bake.utils.settings import PlatformType
 from bakelib.refreshable_cache import FetchFn, FnoxFetchFn
@@ -66,6 +67,15 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         # TODO: drop super() once no Homebrew package is installed by hand (move each to mise or a Brewfile)
         super()._update_platform_tools(platform)
         self._brew_bundle(platform, "upgrade")
+
+    def _sync_submodules(self, frozen: bool = False) -> None:
+        # the public repo must work alone, so an unreachable private companion is not fatal
+        try:
+            super()._sync_submodules(frozen=frozen)
+        except typer.Exit:
+            console.warning(
+                "Private companion not available, continuing with public only"
+            )
 
     def _setup_tools(self) -> None:
         # bakelib's default ends with `mise upgrade` and `uv python upgrade`; those belong to Update

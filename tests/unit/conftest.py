@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import PropertyMock, patch
 
 import pytest
+import typer
 
 from src.python import bakefile
 
@@ -21,6 +22,10 @@ class FakeCtx:
     def run(self, cmd: list[str] | str, **kwargs: Any) -> SimpleNamespace:
         self.commands.append(cmd.split() if isinstance(cmd, str) else cmd)
         self.envs.append(kwargs.get("env") or {})
+        if kwargs.get("check", True) and self.returncode:
+            raise typer.Exit(
+                self.returncode
+            )  # like bake, raising on failure by default
         return SimpleNamespace(returncode=self.returncode, stdout="")
 
 
