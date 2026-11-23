@@ -77,6 +77,19 @@ def test_declared_mise_tools_are_the_keys_of_both_files(tmp_path: Path) -> None:
     }
 
 
+def test_declared_mise_tools_include_the_global_config_public_and_private(
+    tmp_path: Path,
+) -> None:
+    for rel, tool in (
+        ("src/config/mise/config.toml", "gh"),
+        ("private/src/config/mise/config.toml", "starship"),
+    ):
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True)
+        path.write_text(f'[tools]\n{tool} = "latest"\n')
+    assert declared_mise_tools(tmp_path) == {"gh", "starship"}
+
+
 def test_declared_mise_tools_without_a_tools_table_or_private_file(
     tmp_path: Path,
 ) -> None:

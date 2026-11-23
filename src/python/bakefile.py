@@ -1,6 +1,8 @@
 import os
 import re
 import shutil
+import subprocess
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar, cast
@@ -165,6 +167,50 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         super()._setup_project()
         # last step, so the assert runs once the age key and token exist
         self._apply()
+        self._ensure_signing_key()
+
+    def _ensure_signing_key(self) -> None:
+        # Idempotent, per machine: the private key never leaves it. Needs the git include Apply links
+        if self.ctx.dry_run:
+            return
+        key = self._git_config("user.signingkey")
+        if not key:
+            return
+        have = self.ctx.run(
+            ["gpg", "--list-secret-keys", "--with-colons", key],
+            capture_output=True,
+            stream=False,
+            echo=False,
+            check=False,
+        )
+        if have.returncode == 0:
+            console.success("GPG signing key present")
+            return
+        if not sys.stdin.isatty():
+            console.warning(
+                "No GPG signing key and no terminal to set a passphrase; run `bake setup-dev` again from one"
+            )
+            return
+        name = self._git_config("user.name")
+        # the signing key is the email in angle brackets, which becomes part of the new key's user ID
+        # not self.ctx.run: its pty has no controlling terminal, so gpg fails opening /dev/tty
+        subprocess.run(
+            ["gpg", "--quick-generate-key", f"{name} {key}", "ed25519", "sign", "0"],
+            check=True,
+        )
+        console.success("GPG signing key created")
+        console.info(
+            f"Add its public key to GitHub: gpg --armor --export '{key}' | gh gpg-key add -"
+        )
+
+    def _git_config(self, name: str) -> str:
+        return self.ctx.run(
+            ["git", "config", "--get", name],
+            capture_output=True,
+            stream=False,
+            echo=False,
+            check=False,
+        ).stdout.strip()
 
     @command(help="List copies of a declared mise tool that sit elsewhere on PATH")
     def duplicates(self) -> None:
