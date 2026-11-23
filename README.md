@@ -14,7 +14,7 @@ Machine setup for my computers, tested only on macOS. Private parts live in the 
 
 `bake apply` links the dotfiles into `~`, then asserts (age key present, Bitwarden token stored, each declared secret resolves). It prints no secret values and writes nothing, but resolving a secret may contact the secret store. If the assert fails, it reports what is missing; on a new machine `bake setup-dev` sets up the age key and token.
 
-The repo root is also linked to `~/.config/bake`, which makes this the global bake: after `bake apply`, `bake <command>` works from any folder without a `bakefile.py`, and `bake -g <command>` reaches it from inside another project. It needs bakefile 0.0.86 or newer.
+The repo root is also linked to `~/.config/bake`, which makes this the global bake: after `bake apply`, `bake <command>` works from any folder without a `bakefile.py`, and `bake -g <command>` reaches it from inside another project. It needs bakefile 0.0.87 or newer (earlier versions fail from a folder that has its own `src/__init__.py`).
 
 ## Conflicts
 
