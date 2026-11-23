@@ -1,0 +1,12 @@
+[init]
+	defaultBranch = main
+[commit]
+	gpgsign = true
+[credential]
+	helper =
+	helper = /usr/local/share/gcm-core/git-credential-manager
+[credential "https://dev.azure.com"]
+	useHttpPath = true
+# Identity and work rules live in the private repo; git ignores the include when it is absent
+[include]
+	path = ~/.config/git/private.inc

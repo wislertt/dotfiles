@@ -13,9 +13,14 @@ class Copy:
 
 
 def declared_mise_tools(root: Path) -> set[str]:
-    """The `[tools]` keys, in the form `mise bin-paths` takes (for example `npm:oxfmt`)."""
+    """The `[tools]` keys of the repo and global mise files, in the form `mise bin-paths` takes (for example `npm:oxfmt`)."""
     keys: set[str] = set()
-    for filename in ("mise.toml", "mise.private.toml"):
+    for filename in (
+        "mise.toml",
+        "mise.private.toml",
+        "src/config/mise/config.toml",
+        "private/src/config/mise/config.toml",
+    ):
         path = root / filename
         if path.is_file():
             keys |= set(tomllib.loads(path.read_text()).get("tools", {}))
