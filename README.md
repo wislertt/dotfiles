@@ -14,6 +14,8 @@ Machine setup for my computers, tested only on macOS. Private parts live in the 
 
 `bake apply` links the dotfiles into `~`, then asserts (age key present, Bitwarden token stored, each declared secret resolves). It prints no secret values and writes nothing, but resolving a secret may contact the secret store. If the assert fails, it reports what is missing; on a new machine `bake setup-dev` sets up the age key and token.
 
+The repo root is also linked to `~/.config/bake`, which makes this the global bake: after `bake apply`, `bake <command>` works from any folder without a `bakefile.py`, and `bake -g <command>` reaches it from inside another project. It needs bakefile 0.0.86 or newer.
+
 ## Conflicts
 
 `bake apply` never overwrites a regular file. If one already exists at a target, Apply names it, leaves it untouched and exits non-zero: move or delete it, then rerun. Forcing (`mise dotfiles apply --force`) is a manual choice made outside `bake`. Apply does replace a symlink that points elsewhere; only the link changes.

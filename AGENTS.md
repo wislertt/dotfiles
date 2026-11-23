@@ -38,6 +38,7 @@ Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake a
 
 - `src/bin` links to `~/.local/bin`, `src/config` to `~/.config`, `src/home` to `~`. `src/lib` is not linked: scripts and `bake` read it from the repo (shared env files, the Brewfiles).
 - `private/src/{bin,config,home}` link to the same targets.
+- The repo root itself links to `~/.config/bake` (a `[dotfiles]` entry in `mise.toml`), so this bakefile is the global bake: plain `bake` outside any project uses it, and `bake -g` uses it inside one.
 - A new file in an existing group needs nothing. A new target needs a group in `mise.toml` (`[dotfile_groups.*]` and `bootstrap.dotfile_groups`); private groups go in `mise.private.toml`, loaded with `-E private` when `private/` exists.
 - Zsh modules are `src/config/zsh/conf.d/NN-name.zsh`, loaded in order: 10 path, 20 tools, 30 aliases, 40 claude. Public modules use 10-49, private modules use 50-89. Pick the next free number in the range that fits.
 - `bake lint`: format and lint checks. `bake apply`, `bake setup-dev`, `bake setup-fnox`, `bake update`: as above.

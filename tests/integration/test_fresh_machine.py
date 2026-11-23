@@ -17,6 +17,16 @@ def test_public_clone_applies_and_a_second_apply_changes_nothing(
     assert public_machine.links() == links
 
 
+def test_apply_links_the_repo_as_the_global_bake_directory(
+    public_machine: Machine,
+) -> None:
+    result = public_machine.apply()
+    assert result.returncode == 0, result.stderr
+    link = public_machine.home / ".config" / "bake"
+    assert link.resolve() == public_machine.repo.resolve()
+    assert (link / "bakefile.py").is_file()
+
+
 def test_existing_regular_file_is_refused_named_and_left_untouched(
     public_machine: Machine,
 ) -> None:
