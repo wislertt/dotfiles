@@ -21,6 +21,7 @@ root = "."
 [tools]
 # latest by default; pin a version only if a release breaks something, and say why
 age = "latest"
+bitwarden-secrets-manager = "latest"
 bun = "latest"
 fnox = "latest"
 jq = "latest"
