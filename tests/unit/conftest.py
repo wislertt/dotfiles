@@ -15,6 +15,7 @@ class FakeCtx:
 
     def __init__(self, returncode: int = 0) -> None:
         self.returncode = returncode
+        self.dry_run = False
         self.commands: list[list[str]] = []
         self.envs: list[dict[str, str]] = []
 
