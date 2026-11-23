@@ -18,9 +18,9 @@ _Avoid_: Install, provision, init, bootstrap
 Run with `bake update`, on demand. The ritual that upgrades what is already installed (tools, macOS apps). Setup installs, Update upgrades, and Apply does neither.
 _Avoid_: Upgrade, refresh (Refresh is for secrets)
 
-**Dedupe**:
-Run with `bake dedupe`, on demand and not one of the four times. Lists installs (Homebrew, global npm, pipx, cargo, `go install`) that a declared tool has replaced, and removes them only with `--yes`. Lists a copy only when the replacement is actually installed, and never touches something merely undeclared, so hand-installed apps stay. Setup and Update never remove; this is the only removal path.
-_Avoid_: Clean (`bake clean` is for files in the repo), uninstall, prune
+**Duplicates**:
+Run with `bake duplicates`, on demand and not one of the four times. A read-only report of copies of a declared mise tool that sit elsewhere on `PATH` (a Homebrew `jq` after `jq` moved to `mise.toml`). It looks at the binaries the mise copy ships, so it needs no knowledge of which package manager owns the other copy. It removes nothing: the owner removes each copy with the manager that owns it, and the path says which. System directories, mise shims and project virtualenvs are not reported.
+_Avoid_: Dedupe, clean (`bake clean` is for files in the repo), prune
 
 **Use**:
 Whenever something that invokes our dotfiles runs, such as a linked script or a shell start. Not a command: it happens on its own, and a failure here is a surprise.

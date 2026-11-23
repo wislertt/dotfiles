@@ -42,7 +42,7 @@ Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake a
 - A new file in an existing group needs nothing. A new target needs a group in `mise.toml` (`[dotfile_groups.*]` and `bootstrap.dotfile_groups`); private groups go in `mise.private.toml`, loaded with `-E private` when `private/` exists.
 - Zsh modules are `src/config/zsh/conf.d/NN-name.zsh`, loaded in order: 10 path, 20 tools, 30 aliases, 40 claude. Public modules use 10-49, private modules use 50-89. Pick the next free number in the range that fits.
 - `bake lint`: format and lint checks. `bake apply`, `bake setup-dev`, `bake setup-fnox`, `bake update`: as above.
-- `bake dedupe`: lists installs a declared tool has replaced (brew, npm -g, pipx, cargo, go install); `--yes` removes them. The only command that removes installs, and never part of Apply, Setup or Update (it sits outside the four times).
+- `bake duplicates`: read-only report of copies of a declared mise tool elsewhere on `PATH`. It removes nothing; Apply, Setup and Update never remove either.
 - A command-line tool goes in `mise.toml` at `latest`; pin a version there only when a release breaks something, with a one-line comment why. A macOS GUI app goes in a Brewfile as a `cask` line, and nowhere else; `bake lint` checks both.
 
 ## Conduct

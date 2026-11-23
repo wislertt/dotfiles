@@ -2,7 +2,7 @@
 
 Status: ready-for-human
 
-Blocked by: 07 (Dedupe command), 08 (Tool decisions)
+Blocked by: 07 (Duplicates report), 08 (Tool decisions)
 
 Spec: `.tracker/initialization/spec.md`.
 

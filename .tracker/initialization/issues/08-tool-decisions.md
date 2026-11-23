@@ -2,11 +2,11 @@
 
 Status: ready-for-human
 
-Blocked by: 06, 07 (Dedupe command)
+Blocked by: 06, 07 (Duplicates report)
 
 Spec: `.tracker/initialization/spec.md`.
 
-**What to build:** Every tool the owner uses has a home. Sort what is installed into mise, the public Brewfile or the private Brewfile, and for each of starship, zed, git, gh, yt-dlp and marimo decide public, private or disposable for its config (or record an explicit skip). Then install the declared copies with Setup and remove the old Homebrew and global copies with `bake dedupe`.
+**What to build:** Every tool the owner uses has a home. Sort what is installed into mise, the public Brewfile or the private Brewfile, and for each of starship, zed, git, gh, yt-dlp and marimo decide public, private or disposable for its config (or record an explicit skip). Then install the declared copies with Setup and remove the old Homebrew and global copies with `bake duplicates`.
 
 - [ ] starship: decision recorded, config added or skipped
 - [ ] zed: decision recorded, config added or skipped
@@ -15,5 +15,5 @@ Spec: `.tracker/initialization/spec.md`.
 - [ ] yt-dlp: decision recorded, config added or skipped
 - [ ] marimo: decision recorded, config added or skipped
 - [ ] Every installed tool is declared in mise, the public Brewfile or the private Brewfile, or recorded as deliberately undeclared
-- [ ] `bake setup-dev` installs the declared copies, then `bake dedupe --yes` removes the old ones and a second dry run is empty
+- [ ] `bake setup-dev` installs the declared copies, then each old copy that `bake duplicates` lists is removed by hand with its own package manager, and a second run lists none
 - [ ] The Homebrew upgrade TODO in the bakefile is dropped if nothing is left installed by hand in Homebrew

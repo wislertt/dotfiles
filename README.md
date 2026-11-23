@@ -40,7 +40,7 @@ The Brewfile apps (`src/lib/Brewfile`, casks only) are installed on macOS and sk
 
 The repo root is also linked to `~/.config/bake`, which makes this the global bake: after `bake apply`, `bake <command>` works from any folder without a `bakefile.py`, and `bake -g <command>` reaches it from inside another project. It needs bakefile 0.0.87 or newer (earlier versions fail from a folder that has its own `src/__init__.py`).
 
-`bake dedupe` finds installs that a declared tool has replaced (for example a Homebrew `jq` after `jq` moved to `mise.toml`) and removes them with `--yes`. Run it without `--yes` first to see the list. It never touches something you did not declare.
+`bake duplicates` lists copies of a declared mise tool that sit elsewhere on `PATH` (for example a Homebrew `jq` after `jq` moved to `mise.toml`). It only reports: remove each copy with the package manager that owns it.
 
 ## Conflicts
 

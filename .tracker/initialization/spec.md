@@ -60,7 +60,7 @@ Make the Fresh-machine path (install the tool manager, Setup, Apply) work the sa
 46. As the owner, I want each tool I use today to get a decision (public, private or disposable) and its config added where it belongs, so that nothing I rely on is left unmanaged.
 47. As the owner, I want a clean secret scan of the full history of both repos before anything is pushed, so that a past mistake is not published.
 48. As the owner, I want a diff check that shows what Apply would change before I rely on it, so that I can review changes to my machine.
-49. As the owner, I want a `bake dedupe` command that removes the old Homebrew or global copy of a tool I moved to mise or a Brewfile, only on request and never touching what I installed by hand, so that each tool has one copy.
+49. As the owner, I want a `bake duplicates` report of copies of a tool I moved to mise that still sit elsewhere on `PATH`, so that I can remove each one by hand and each tool has one copy.
 
 ## Implementation Decisions
 
@@ -93,7 +93,7 @@ Make the Fresh-machine path (install the tool manager, Setup, Apply) work the sa
 
 - macOS `defaults` and other system settings.
 - A machine-local override mechanism (a fifth home).
-- A rollback command, and any removal in Setup, Update or Apply. The one removal path is `bake dedupe` (ticket 07), which removes only installs that a declared tool has replaced, and only with `--yes`.
+- An uninstall or rollback command, and any removal in Setup, Update or Apply. `bake duplicates` (ticket 07) only reports.
 - Linux bootstrap beyond the CI job, other platforms, and Windows.
 - A package manifest for anything other than macOS GUI apps.
 - Publishing releases or packages.
