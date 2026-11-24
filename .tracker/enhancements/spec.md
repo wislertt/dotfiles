@@ -8,9 +8,13 @@ v1 proves a fresh machine reaches a working state, but a machine in daily use dr
 
 v1 also left known gaps. Files that apps also rewrite (Claude Code's settings, Zed's settings) are not owned at all. agent-home still links its files into the home folder one at a time by hand. macOS settings are not captured, so a new machine starts with defaults. Workflows are not checked for security issues. A new `latest` release installs the day it appears, before a compromised one could be noticed. Nothing notices when shell startup gets slow. About forty GUI apps were installed by hand and are in no Brewfile.
 
+The bake code itself does not scale. One class holds every concern: secrets, Homebrew, the Setup and Update overrides, required tools, three lint checks, Apply and its assert, and two commands. The repo root is looked up three times. Each enhancement here adds a command or a step, so without a layout the class keeps growing and a reader cannot find where a command lives.
+
 ## Solution
 
 A small Tidy ritual finds Strays (anything installed that no declaration and no Keep list accounts for) and removes them one at a time with the manager that owns them, asking first. `bake tidy --check` only lists them and fails if there are any. Tidy absorbs Duplicates. Update, after upgrading, drops the old versions and caches it replaced.
+
+First, the bake code is restructured with no behaviour change: one mixin per bake command or bakelib hook family, pure logic in a separate layer, and the bakebook only composing them. Each later enhancement then adds its own command module instead of growing one class.
 
 The other gaps are independent improvements, each shipped on its own:
 
@@ -69,9 +73,22 @@ The other gaps are independent improvements, each shipped on its own:
 42. As the owner, I want each settings script to rerun only when it changes, so that applying settings is fast and repeatable.
 43. As the owner, I want CI to fail when interactive shell startup exceeds a time limit, so that a slow shell module is caught before it lands.
 44. As a future reader, I want an ADR explaining why Tidy removes things after v1 chose report-only, so that the reversal is not a surprise.
+45. As a contributor, I want each bake command's code in its own module, so that I can find and change one command without reading the rest.
+46. As a contributor, I want the bakebook to only compose the command mixins, so that the full list of features is visible in one place.
+47. As a contributor, I want pure logic (Brewfile line checks, shell-file classification, signing plans, duplicate finding) kept apart from bakelib, so that it can be read and tested without a fake context.
+48. As a contributor, I want logic shared by several commands (the Brewfiles, the signing key) in one shared module, so that Setup, Update, lint and the signing command cannot drift apart.
+49. As a contributor, I want the repo root defined once, so that moving a file cannot quietly break a path.
+50. As a contributor adding a feature, I want a written rule for where its code goes, so that the layout holds as features grow.
+51. As the owner, I want the restructure to change no behaviour, so that every command acts exactly as before and the restructure is safe to land alone.
+52. As a contributor, I want tests laid out like the code, so that each module's tests are next to each other and easy to find.
+53. As an agent working on a later enhancement, I want the restructure landed first, so that Tidy and Update's prune go straight into their own modules.
 
 ## Implementation Decisions
 
+- **Bake code layout.** The bakebook only composes mixins and exposes the bakebook object. Commands live in a commands layer, one mixin per bake command or bakelib hook family: Apply (with its assert), the Setup and Update overrides (tools, Brewfile steps, required tools), lint (shell, Brewfiles, global fnox), secrets (fetch functions and the secret key names), duplicates, and the signing clean-up command. Pure logic with no bakelib import lives in a core layer: Brewfiles (paths, line check), signing (today's module, moved), duplicates (today's module, moved) and shell-file classification. The repo root is one constant. It is called core, not lib, because the repo's lib folder already means repo files that are not linked. bakelib already defines commands on mixins (its submodules mixin), so this needs nothing new from bakelib.
+- **The restructure changes no behaviour** and lands before Tidy and Machine hygiene. A fix found during it is listed for the owner, not made.
+- **Commands end in their own module.** Duplicates moves to its command module now, and Tidy replaces it with a Tidy module. The signing clean-up command moves to a signing command module, and if GitHub key clean-up is rehomed later, only that module moves.
+- **The layout rule is written down**, not in an ADR (it is easy to reverse): the steering file's layout section and the contributing guide say a new command is a new command mixin, its pure logic goes in core, and it is added to the bakebook.
 - **Tidy replaces Duplicates.** A Duplicate is one kind of Stray, and two commands over overlapping ground would drift. Duplicates' rules carry over unchanged: system directories, mise shims and project virtualenvs are not reported, and a tool mise has not installed is not reported.
 - **Tidy reverses v1's report-only choice** (v1 ticket 07). That choice was safe while removal meant per-manager code run without asking. Asking per Stray, with Keep lists, makes removal safe enough. A new ADR (0003) records the reversal.
 - **Stray kinds:**
@@ -102,6 +119,7 @@ The other gaps are independent improvements, each shipped on its own:
 
 ## Testing Decisions
 
+- **The restructure** is proven by the existing tests. Command tests (with `FakeCtx`) are the seam: they move to mirror the commands layer and only their imports and locations change. The existing pure-function tests for signing and duplicates move to mirror the core layer. No new seam and no new core-only tests; `FakeCtx` stays shared.
 - A good test observes only external behavior: what is listed, the exit code, which commands would run, and the files and links that result. It never asserts on internal calls or on log wording.
 - **Tidy and Update** are tested at the bake command, with `FakeCtx`. Canned manager outputs, a temp home directory, `PATH` and Keep lists stand in for the machine, and no test touches the real one. The current unit tests for the duplicates helper function become command tests, so Tidy has a single seam. Prior art: the Setup and Update tests and the duplicates tests.
 - **Partly owned files and the agent-home links** are tested by the existing integration test: real mise in a throwaway home directory. It checks that owned keys merge in, the app's other keys survive, a rerun changes nothing, and Apply works without agent-home.
@@ -122,9 +140,10 @@ The other gaps are independent improvements, each shipped on its own:
     - editor config beyond Zed;
     - a real Linux machine.
 - Pruning unused Rust toolchains.
+- Restructuring the private companion's bakefile. It is a separate repo and can follow the same layout later.
 
 ## Further Notes
 
-- **Tickets:** 01 Tidy, 02 Machine hygiene, 03 CI and supply-chain guards, 04 Own more config, 05 New-machine parity (blocked by 01). The rest can start in any order.
+- **Tickets:** 01 Structure the bake code (stories 45-53), 02 Tidy (blocked by 01), 03 Machine hygiene (blocked by 01), 04 CI and supply-chain guards, 05 Own more config, 06 New-machine parity (blocked by 02). The rest can start in any order.
 - **Origin:** the machine cleanup at the end of v1 ticket 08, and a survey of public dotfiles in the agent-home wiki (dotfiles research notes).
 - **Glossary:** Tidy, Stray and Keep list are already defined. Duplicates leaves the glossary when Tidy lands.

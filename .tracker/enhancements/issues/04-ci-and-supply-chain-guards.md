@@ -1,4 +1,4 @@
-# 03: CI and supply-chain guards
+# 04: CI and supply-chain guards
 
 Status: ready-for-agent
 

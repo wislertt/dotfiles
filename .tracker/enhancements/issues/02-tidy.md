@@ -1,8 +1,8 @@
-# 01: Tidy
+# 02: Tidy
 
 Status: ready-for-agent
 
-Blocked by: None (can start immediately)
+Blocked by: 01 (Structure the bake code)
 
 Spec: `.tracker/enhancements/spec.md` (stories 1-21, 44).
 
@@ -13,7 +13,7 @@ Spec: `.tracker/enhancements/spec.md` (stories 1-21, 44).
 - [ ] Plain `tidy` asks per Stray and runs the owning manager's uninstall; Homebrew's autoremove after any Homebrew uninstall; a leftover folder in the home directory is made writable, then removed
 - [ ] Anything needing sudo, apps, and unknown local bin files are only named, with the command to run
 - [ ] Public and private Keep lists (`kind:name` key, one-line reason) are honoured; the private one is read only when the private companion exists; both seeded from v1 ticket 08's deliberately-undeclared items, work-revealing ones in the private list
-- [ ] `bake duplicates` is removed
+- [ ] Tidy is its own command module (with its pure logic in core), and `bake duplicates` is removed with its command and core modules
 - [ ] Tested at the command with `FakeCtx` (canned manager outputs, temp home, `PATH` and Keep lists); no test touches the real machine
 - [ ] ADR 0003 records Tidy removing per item with Keep lists, reversing v1 ticket 07; GLOSSARY drops Duplicates; README and AGENTS.md updated
 - [ ] `bake lint` and `bake test` pass

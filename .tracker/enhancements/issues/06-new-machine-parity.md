@@ -1,8 +1,8 @@
-# 05: New-machine parity
+# 06: New-machine parity
 
 Status: ready-for-agent
 
-Blocked by: 01 (Tidy)
+Blocked by: 02 (Tidy)
 
 Spec: `.tracker/enhancements/spec.md` (stories 38-42).
 

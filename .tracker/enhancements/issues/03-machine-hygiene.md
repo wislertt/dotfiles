@@ -1,8 +1,8 @@
-# 02: Machine hygiene
+# 03: Machine hygiene
 
 Status: ready-for-agent
 
-Blocked by: None (can start immediately)
+Blocked by: 01 (Structure the bake code)
 
 Spec: `.tracker/enhancements/spec.md` (stories 22-27).
 
