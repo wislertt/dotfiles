@@ -28,8 +28,8 @@ Put each thing in exactly one home.
 Every new thing is assigned to one of these when it is added, and captured in that step.
 
 - **Apply**: `bake apply`, links dotfiles.
-- **Setup**: `bake setup-dev`, installs tools from mise (`mise.toml`) and, on macOS, the casks in `src/lib/Brewfile` and `private/src/lib/Brewfile`; mise tools are not upgraded. Includes `bake setup-fnox`, and ends with `bake apply`.
-- **Update**: `bake update`, on demand. Upgrades tools and, on macOS, Brewfile apps.
+- **Setup**: `bake setup-dev`, installs tools from mise (`mise.toml`) and, on macOS, the casks in `src/lib/Brewfile` and `private/src/lib/Brewfile`; mise tools are not upgraded. Includes `bake setup-fnox`, then `bake apply`, then the Signing key (create, renew, publish to GitHub).
+- **Update**: `bake update`, on demand. Upgrades tools and, on macOS, Brewfile apps, then renews and publishes the Signing key.
 - **Use**: not a bake command. Whenever something that invokes our dotfiles runs (a linked script, a shell start).
 
 Fresh machine: install mise, `mise install`, `bake setup-dev`. Everyday: `bake apply`.

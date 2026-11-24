@@ -32,7 +32,9 @@ class FakeCtx:
         returncode = 1 if key in self.failing else self.returncode
         if kwargs.get("check", True) and returncode:
             raise typer.Exit(returncode)  # like bake, raising on failure by default
-        return SimpleNamespace(returncode=returncode, stdout=self.stdout.get(key, ""))
+        return SimpleNamespace(
+            returncode=returncode, stdout=self.stdout.get(key, ""), stderr=""
+        )
 
 
 class FakeVault:

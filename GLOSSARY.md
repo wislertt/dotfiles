@@ -60,6 +60,10 @@ _Avoid_: Package list, app manifest
 State a machine regenerates and nothing versions, so it is never backed up or edited by hand.
 _Avoid_: Temp, cache (a cache is one kind of disposable)
 
+**Signing key**:
+The machine's own GPG key for signing commits, created by Setup and never copied off the machine. It expires 30 days out; Setup and Update renew the same key when under half that remains and keep GitHub holding exactly one copy per machine, titled `dotfiles: <host> (<machine tag>)`. A machine no longer in use stops renewing, so its key expires and Update offers to delete it from GitHub.
+_Avoid_: GPG key (ambiguous with keys added by hand), rotation (renewal keeps the same key)
+
 ### Verification
 
 **Fresh-machine job** (workflow `test-e2e-fresh-machine`):

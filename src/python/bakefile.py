@@ -3,7 +3,7 @@ import re
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import Annotated, ClassVar, cast
 from unittest.mock import patch
 
 import typer
@@ -16,6 +16,7 @@ from bakelib.space import fnox as fnox_space
 from identify import identify
 
 from src.python import duplicates as duplicates_lib
+from src.python import signing
 
 # Names the scripts in src/bin read with `bake secret get`; the references live in fnox.toml
 SECRET_KEYS = ("CLAUDE_GLM_AUTH_TOKEN", "AICLIENT2API_API_KEY")
@@ -162,53 +163,36 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         super()._setup_project()
         # last step, so the assert runs once the age key and token exist
         self._apply()
-        self._ensure_signing_key()
+        signing.SigningKey.for_this_machine(self.ctx).sync(create=True)
 
-    def _ensure_signing_key(self) -> None:
-        # Idempotent, per machine: the private key never leaves it. Needs the git include Apply links
-        if self.ctx.dry_run:
-            return
-        key = self._git_config("user.signingkey")
-        if not key:
-            return
-        have = self.ctx.run(
-            ["gpg", "--list-secret-keys", "--with-colons", key],
-            capture_output=True,
-            stream=False,
-            echo=False,
-            check=False,
-        )
-        if have.returncode == 0:
-            console.success("GPG signing key present")
-            return
-        name = self._git_config("user.name")
-        # No passphrase, so no pinentry: commits from editors and agents have no terminal to prompt in
-        self.ctx.run(
-            [
-                "gpg",
-                "--batch",
-                "--passphrase",
-                "",
-                "--quick-generate-key",
-                f"{name} {key}",
-                "ed25519",
-                "sign",
-                "0",
-            ]
-        )
-        console.success("GPG signing key created")
-        console.info(
-            f"Add its public key to GitHub: gpg --armor --export '{key}' | gh gpg-key add -"
-        )
+    def _update_project(self) -> None:
+        super()._update_project()
+        signing.SigningKey.for_this_machine(self.ctx).sync(create=False)
 
-    def _git_config(self, name: str) -> str:
-        return self.ctx.run(
-            ["git", "config", "--get", name],
-            capture_output=True,
-            stream=False,
-            echo=False,
-            check=False,
-        ).stdout.strip()
+    # Temporary until the enhancements decide where GitHub key clean-up lives
+    @command(
+        help="List GitHub GPG keys and offer to delete expired or never-expiring ones"
+    )
+    def clean_signing_keys(
+        self,
+        check: Annotated[
+            bool,
+            typer.Option(help="List only; fail if any key could be cleaned"),
+        ] = False,
+        yes: Annotated[
+            bool,
+            typer.Option(
+                "--yes",
+                "-y",
+                help="No prompts: delete every expired or never-expiring key",
+            ),
+        ] = False,
+    ) -> None:
+        key = signing.SigningKey.for_this_machine(self.ctx)
+        left = key.clean(check=check, yes=yes)
+        if check and left:
+            console.warning(f"{len(left)} GitHub GPG key(s) could be cleaned")
+            raise SystemExit(1)
 
     @command(help="List copies of a declared mise tool that sit elsewhere on PATH")
     def duplicates(self) -> None:
