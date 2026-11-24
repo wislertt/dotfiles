@@ -1,2 +1,22 @@
 # Global tools: add one only when a linked script or the shell needs it from any directory
 [tools]
+claude-code = "latest"
+"conda:gnupg" = "latest"
+gh = "latest"
+# Pinned asset: the -symbols tarball would otherwise tie with the real one
+"github:git-ecosystem/git-credential-manager" = { version = "latest", asset_pattern = 'gcm-{{ os(macos="osx") }}-{{ arch() }}-{{ version }}.tar.gz' }
+mole = "latest"
+# npx for Claude Code's user-wide playwright MCP server
+node = "lts"
+# bake outside any project runs the global bakefile (~/.config/bake)
+"pipx:bakefile" = { version = "latest", extras = "locked" }
+"pipx:pre-commit" = "latest"
+"pipx:zerv-version" = "latest"
+ripgrep = "latest"
+# Installs rustup if missing; a repo's rust-toolchain.toml still wins (setting below)
+rust = "stable"
+starship = "latest"
+
+[settings]
+# Without it, mise's RUSTUP_TOOLCHAIN would override each repo's rust-toolchain.toml
+idiomatic_version_file_enable_tools = ["rust"]

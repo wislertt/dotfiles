@@ -1,3 +1,5 @@
 # macOS GUI apps that reveal nothing about the owner; casks only (ADR 0002)
+# except mise, the bootstrap: installed by hand first, listed so Update upgrades it
+brew "mise"
 cask "docker-desktop"
 cask "zed"

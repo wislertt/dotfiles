@@ -1,0 +1,13 @@
+[init]
+	defaultBranch = main
+[commit]
+	gpgsign = true
+[credential]
+	helper =
+	# Resolved on PATH (mise); never run `git-credential-manager configure`, it writes a versioned path here
+	helper = manager
+[credential "https://dev.azure.com"]
+	useHttpPath = true
+# Identity and work rules live in the private repo; git ignores the include when it is absent
+[include]
+	path = ~/.config/git/private.inc

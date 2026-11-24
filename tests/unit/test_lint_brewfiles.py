@@ -15,8 +15,16 @@ def test_a_cask_only_brewfile_passes(
     bakebook._lint_brewfiles()
 
 
+def test_mise_is_the_one_formula_a_brewfile_may_hold(
+    bakebook: bakefile.MyBakebook, fake_repo: Path
+) -> None:
+    (fake_repo / "src" / "lib" / "Brewfile").write_text('brew "mise"\ncask "zed"\n')
+    bakebook._lint_brewfiles()
+
+
 @pytest.mark.parametrize(
-    "line", ['brew "jq"', 'tap "x/y"', 'mas "X", id: 1', "cask zed"]
+    "line",
+    ['brew "jq"', 'brew "mise-en-place"', 'tap "x/y"', 'mas "X", id: 1', "cask zed"],
 )
 def test_a_brewfile_with_anything_but_casks_fails_and_is_named(
     bakebook: bakefile.MyBakebook, fake_repo: Path, line: str

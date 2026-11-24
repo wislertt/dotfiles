@@ -1,9 +1,7 @@
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from bake.utils.settings import PlatformType
-from bakelib import BaseSpace
 
 from src.python import bakefile
 from tests.unit.conftest import FakeCtx
@@ -62,18 +60,14 @@ def test_setup_runs_no_brew_off_macos(
 
 
 @pytest.mark.parametrize("step", ["_setup_platform_tools", "_update_platform_tools"])
-def test_platform_step_runs_bakelibs_default_before_the_brewfiles(
+def test_platform_step_runs_only_the_brewfiles(
     bakebook: bakefile.MyBakebook, fake_ctx: FakeCtx, brewfiles: Path, step: str
 ) -> None:
+    # Homebrew holds only what the Brewfiles declare, so no blanket `brew upgrade`
     del brewfiles
-    calls: list[str] = []
-    with patch.object(
-        BaseSpace, step, lambda _self, _platform: calls.append("default")
-    ):
-        fake_ctx.commands.clear()
-        getattr(bakebook, step)("macos")
-        calls += ["bundle" for _ in _bundles(fake_ctx)]
-    assert calls == ["default", "bundle", "bundle"]
+    getattr(bakebook, step)("macos")
+    assert fake_ctx.commands == _bundles(fake_ctx)
+    assert len(fake_ctx.commands) == 2
 
 
 def test_setup_tools_never_upgrade(

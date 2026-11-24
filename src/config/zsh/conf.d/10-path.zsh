@@ -1,5 +1,5 @@
 typeset -U path PATH
-[[ $OSTYPE == darwin* ]] && brew_path=(/opt/homebrew/opt/mysql-client/bin /opt/homebrew/bin /opt/homebrew/sbin)
+[[ $OSTYPE == darwin* ]] && brew_path=(/opt/homebrew/bin /opt/homebrew/sbin)
 path=(
     "$HOME/.local/bin"
     $brew_path

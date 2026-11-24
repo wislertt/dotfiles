@@ -1,8 +1,9 @@
+import os
 import re
 import shutil
 from collections.abc import Mapping
 from pathlib import Path
-from typing import ClassVar, cast
+from typing import Annotated, ClassVar, cast
 from unittest.mock import patch
 
 import typer
@@ -14,11 +15,17 @@ from bakelib.space import FnoxSpace, PythonSpace, SubmodulesUtils
 from bakelib.space import fnox as fnox_space
 from identify import identify
 
+from src.python import duplicates as duplicates_lib
+from src.python import signing
+
 # Names the scripts in src/bin read with `bake secret get`; the references live in fnox.toml
 SECRET_KEYS = ("CLAUDE_GLM_AUTH_TOKEN", "AICLIENT2API_API_KEY")
 
-# A Brewfile holds casks only (ADR 0002): anything else belongs to the tool manager
-CASK_LINE = re.compile(r"""^cask (["'])[^"']+\1(,.*)?$""")
+# System copies cannot be removed, so they are not reported
+SYSTEM_BIN_DIRS = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
+
+# A Brewfile holds casks only (ADR 0002), plus mise: the bootstrap, so Update upgrades it
+CASK_LINE = re.compile(r"""^(cask (["'])[^"']+\2(,.*)?|brew (["'])mise\4)$""")
 
 
 class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
@@ -48,14 +55,11 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
         for brewfile in brewfiles:
             self.ctx.run(["brew", "bundle", verb, "--file", str(brewfile)])
 
+    # No super(): bakelib's default runs a blanket `brew upgrade`, and Homebrew holds only the Brewfiles
     def _setup_platform_tools(self, platform: PlatformType) -> None:
-        # TODO: drop super() once no Homebrew package is installed by hand (move each to mise or a Brewfile)
-        super()._setup_platform_tools(platform)
         self._brew_bundle(platform, "install")
 
     def _update_platform_tools(self, platform: PlatformType) -> None:
-        # TODO: drop super() once no Homebrew package is installed by hand (move each to mise or a Brewfile)
-        super()._update_platform_tools(platform)
         self._brew_bundle(platform, "upgrade")
 
     def _sync_submodules(self, frozen: bool = False) -> None:
@@ -131,7 +135,7 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
                 text = line.strip()
                 if text and not text.startswith("#") and not CASK_LINE.match(text):
                     raise SystemExit(
-                        f'{brewfile.name}:{number}: only `cask "name"` lines allowed'
+                        f'{brewfile.name}:{number}: only `cask "name"` lines (and `brew "mise"`) allowed'
                     )
             if shutil.which("brew"):
                 self.ctx.run(
@@ -157,8 +161,77 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
 
     def _setup_project(self) -> None:
         super()._setup_project()
-        # last step, so the assert runs once the age key and token exist
+        self._setup_dotfiles()
+
+    def _update_project(self) -> None:
+        super()._update_project()
+        self._update_dotfiles()
+
+    def _setup_dotfiles(self) -> None:
+        """This repo's own Setup steps, in order, after bakelib's."""
+        # before the key, so the assert runs once the age key and token exist
         self._apply()
+        signing.SigningKey.for_this_machine(self.ctx).sync(create=True)
+
+    def _update_dotfiles(self) -> None:
+        """This repo's own Update steps, in order, after bakelib's."""
+        signing.SigningKey.for_this_machine(self.ctx).sync(create=False)
+
+    # Temporary until the enhancements decide where GitHub key clean-up lives
+    @command(
+        help="List GitHub GPG keys and offer to delete expired or never-expiring ones"
+    )
+    def clean_signing_keys(
+        self,
+        check: Annotated[
+            bool,
+            typer.Option(help="List only; fail if any key could be cleaned"),
+        ] = False,
+        yes: Annotated[
+            bool,
+            typer.Option(
+                "--yes",
+                "-y",
+                help="No prompts: delete every expired or never-expiring key",
+            ),
+        ] = False,
+    ) -> None:
+        key = signing.SigningKey.for_this_machine(self.ctx)
+        left = key.clean(check=check, yes=yes)
+        if check and left:
+            console.warning(f"{len(left)} GitHub GPG key(s) could be cleaned")
+            raise SystemExit(1)
+
+    @command(help="List copies of a declared mise tool that sit elsewhere on PATH")
+    def duplicates(self) -> None:
+        tool_bins: dict[str, list[Path]] = {}
+        root = Path(__file__).parents[2]
+        for key in sorted(duplicates_lib.declared_mise_tools(root)):
+            result = self.ctx.run(
+                ["mise", "bin-paths", key],
+                capture_output=True,
+                stream=False,
+                echo=False,
+                check=False,
+            )
+            # not installed yet: nothing to be a duplicate of
+            if result.returncode == 0 and result.stdout.strip():
+                tool_bins[key] = [Path(p) for p in result.stdout.split()]
+        path = [Path(p) for p in os.environ.get("PATH", "").split(os.pathsep) if p]
+        ignore = [
+            *map(Path, SYSTEM_BIN_DIRS),
+            # mise shims and project virtualenvs are not installs
+            *(p for p in path if p.parts[-2:] in (("mise", "shims"), (".venv", "bin"))),
+        ]
+        found = duplicates_lib.other_copies(tool_bins, path, ignore)
+        for copy in found:
+            console.echo(f"{copy.tool}: {copy.path}")
+        if found:
+            console.warning(
+                f"{len(found)} copy(ies) outside mise; remove each with the manager that owns it"
+            )
+        else:
+            console.success("No duplicates")
 
     @command()
     def apply(self) -> None:
