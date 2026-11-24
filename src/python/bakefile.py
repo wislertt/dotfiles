@@ -161,12 +161,20 @@ class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
 
     def _setup_project(self) -> None:
         super()._setup_project()
-        # last step, so the assert runs once the age key and token exist
-        self._apply()
-        signing.SigningKey.for_this_machine(self.ctx).sync(create=True)
+        self._setup_dotfiles()
 
     def _update_project(self) -> None:
         super()._update_project()
+        self._update_dotfiles()
+
+    def _setup_dotfiles(self) -> None:
+        """This repo's own Setup steps, in order, after bakelib's."""
+        # before the key, so the assert runs once the age key and token exist
+        self._apply()
+        signing.SigningKey.for_this_machine(self.ctx).sync(create=True)
+
+    def _update_dotfiles(self) -> None:
+        """This repo's own Update steps, in order, after bakelib's."""
         signing.SigningKey.for_this_machine(self.ctx).sync(create=False)
 
     # Temporary until the enhancements decide where GitHub key clean-up lives
