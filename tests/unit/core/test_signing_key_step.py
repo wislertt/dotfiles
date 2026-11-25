@@ -5,12 +5,12 @@ from typing import Any, cast
 import pytest
 from bake import Context
 
-from src.python import signing
+from src.python.core import signing
 from tests.unit.conftest import FakeCtx
 
 NOW = datetime(2026, 11, 23, tzinfo=UTC)
 TAG = signing.machine_tag("UUID-1")
-TITLE = f"dotfiles: mac-21 ({TAG})"
+TITLE = f"dotfiles: work-mac ({TAG})"
 LIST_SECRET = "gpg --list-secret-keys --with-colons <a@b.c>"
 LIST_GITHUB = "gh api --paginate --slurp user/gpg_keys"
 UPLOAD = f"gh api user/gpg_keys -f name={TITLE} -f armored_public_key=ARMOR"
@@ -35,7 +35,7 @@ def _key(fake_ctx: FakeCtx, interactive: bool = False) -> signing.SigningKey:
     return signing.SigningKey(
         cast("Context", fake_ctx),
         tag=TAG,
-        hostname="mac-21.local",
+        name="work-mac",
         now=lambda: NOW,
         interactive=interactive,
     )
@@ -207,44 +207,3 @@ def test_keys_without_the_dotfiles_title_are_never_deleted(
     monkeypatch.setattr(signing.typer, "confirm", lambda *_a, **_k: True)
     _key(fake_ctx, interactive=True).publish(local)
     assert _writes(fake_ctx) == []
-
-
-@pytest.mark.parametrize(
-    ("check", "yes", "interactive", "deleted"),
-    [
-        (False, False, True, ["2", "3"]),
-        (True, False, True, []),
-        (False, False, False, []),
-        (False, True, False, ["2", "3"]),
-        (True, True, False, []),
-    ],
-)
-def test_clean_deletes_only_confirmed_candidates(
-    fake_ctx: FakeCtx,
-    monkeypatch: pytest.MonkeyPatch,
-    check: bool,
-    yes: bool,
-    interactive: bool,
-    deleted: list[str],
-) -> None:
-    _have_key(fake_ctx, NOW + timedelta(days=30))
-    _github(
-        fake_ctx,
-        _api(1, TITLE, "AAAA", NOW + timedelta(days=30)),
-        _api(2, "dotfiles: old-mac (abcdef)", "CCCC", NOW - timedelta(days=1)),
-        _api(3, "old-laptop", "EEEE", None),
-    )
-    asked: list[tuple[str, bool]] = []
-
-    def confirm(text: str, default: bool) -> bool:
-        asked.append((text, default))
-        return default
-
-    monkeypatch.setattr(signing.typer, "confirm", confirm)
-    left = _key(fake_ctx, interactive=interactive).clean(check=check, yes=yes)
-    assert _writes(fake_ctx) == [f"gh api -X DELETE user/gpg_keys/{i}" for i in deleted]
-    assert [k.id for k in left] == ([] if deleted else [2, 3])
-    if deleted and not yes:
-        assert [d for _t, d in asked] == [True, True]
-    if yes:
-        assert asked == []

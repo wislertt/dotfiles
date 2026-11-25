@@ -1,295 +1,31 @@
-import os
-import re
-import shutil
-from collections.abc import Mapping
-from pathlib import Path
-from typing import Annotated, ClassVar, cast
-from unittest.mock import patch
-
-import typer
-from bake import command, console
-from bake.utils.settings import PlatformType
-from bakelib.refreshable_cache import FetchFn, FnoxFetchFn
-from bakelib.refreshable_cache.fnox import run_fnox
 from bakelib.space import FnoxSpace, PythonSpace, SubmodulesUtils
-from bakelib.space import fnox as fnox_space
-from identify import identify
 
-from src.python import duplicates as duplicates_lib
-from src.python import signing
-
-# Names the scripts in src/bin read with `bake secret get`; the references live in fnox.toml
-SECRET_KEYS = ("CLAUDE_GLM_AUTH_TOKEN", "AICLIENT2API_API_KEY")
-
-# System copies cannot be removed, so they are not reported
-SYSTEM_BIN_DIRS = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
-
-# A Brewfile holds casks only (ADR 0002), plus mise: the bootstrap, so Update upgrades it
-CASK_LINE = re.compile(r"""^(cask (["'])[^"']+\2(,.*)?|brew (["'])mise\4)$""")
+from src.python.commands.apply import ApplyMixin
+from src.python.commands.github_actions import GitHubActionsMixin
+from src.python.commands.lint import LintMixin
+from src.python.commands.machine import MachineMixin
+from src.python.commands.macos_settings import MacosSettingsMixin
+from src.python.commands.secrets import SecretsMixin
+from src.python.commands.setup_update import SetupUpdateMixin
+from src.python.commands.tidy import TidyMixin
+from src.python.commands.tmp.uv_cache import UvCacheMixin
 
 
-class MyBakebook(SubmodulesUtils, FnoxSpace[str | None], PythonSpace):
-    fnox_bootstrap_secrets: ClassVar[Mapping[str, str]] = {
-        "FNOX_BWS_ACCESS_TOKEN": "Bitwarden access token",
-    }
-
-    def get_secret_fetch_fns(self) -> tuple[FetchFn[str | None], ...]:
-        return (
-            *super().get_secret_fetch_fns(),
-            *(cast("FetchFn[str | None]", FnoxFetchFn(key)) for key in SECRET_KEYS),
-        )
-
-    def _brewfiles(self) -> list[Path]:
-        root = Path(__file__).parents[2]
-        paths = (root / "src/lib/Brewfile", root / "private/src/lib/Brewfile")
-        return [p for p in paths if p.is_file()]
-
-    def _brew_bundle(self, platform: PlatformType, verb: str) -> None:
-        if platform != "macos":
-            return
-        brewfiles = self._brewfiles()
-        if brewfiles and not shutil.which("brew"):
-            raise SystemExit(
-                "Homebrew is not installed, so the Brewfile apps cannot be set up"
-            )
-        for brewfile in brewfiles:
-            self.ctx.run(["brew", "bundle", verb, "--file", str(brewfile)])
-
-    # No super(): bakelib's default runs a blanket `brew upgrade`, and Homebrew holds only the Brewfiles
-    def _setup_platform_tools(self, platform: PlatformType) -> None:
-        self._brew_bundle(platform, "install")
-
-    def _update_platform_tools(self, platform: PlatformType) -> None:
-        self._brew_bundle(platform, "upgrade")
-
-    def _sync_submodules(self, frozen: bool = False) -> None:
-        # the public repo must work alone, so an unreachable private companion is not fatal
-        try:
-            super()._sync_submodules(frozen=frozen)
-        except typer.Exit:
-            console.warning(
-                "Private companion not available, continuing with public only"
-            )
-
-    def _setup_tools(self) -> None:
-        # bakelib's default ends with `mise upgrade` and `uv python upgrade`; those belong to Update
-        self._add_mise_tools()
-        self.ctx.run(["mise", "install"])
-        self.ctx.run(["mise", "doctor"])
-        self.ctx.run(["mise", "list", "--local"])
-        self._sync_submodules(frozen=True)
-
-    def _get_mise_tools(self) -> set[str]:
-        return {
-            *super()._get_mise_tools(),
-            "bitwarden-secrets-manager",
-            "jq",
-            "shellcheck",
-        }
-
-    def _get_required_cli_tools(self) -> dict[str, set[Path] | None]:
-        tools = super()._get_required_cli_tools()
-        tools["bws"] = None  # fnox shells out to it for every Bitwarden secret
-        tools["jq"] = None
-        tools["shellcheck"] = None
-        return tools
-
-    def _assert_tools(self) -> None:
-        super()._assert_tools()
-        # bakelib only prints a missing tool; the assert must fail so CI goes red
-        missing = [
-            name
-            for name in self._get_required_cli_tools()
-            if not self.ctx.dry_run and shutil.which(name) is None
-        ]
-        if missing:
-            console.error(f"required tools missing: {', '.join(missing)}")
-            raise SystemExit(1)
-
-    def _lint_fast(self) -> None:
-        super()._lint_fast()
-        self._lint_shell()
-        self._assert_global_fnox_empty()
-        self._lint_brewfiles()
-
-    def _lint_shell(self) -> None:
-        # Same file types as the pre-commit shellcheck hook; ShellCheck cannot parse zsh, so `zsh -n`
-        out = self.ctx.run(
-            ["git", "ls-files", "-z"], capture_output=True, stream=False, echo=False
-        ).stdout
-        tags = {
-            name: identify.tags_from_path(name)
-            for name in filter(None, out.split("\0"))
-            if Path(name).is_file() and not Path(name).is_symlink()
-        }
-        sh = [n for n, t in tags.items() if "shell" in t and "zsh" not in t]
-        zsh = [n for n, t in tags.items() if "zsh" in t]
-        if sh:
-            self.ctx.run(["shellcheck", "--", *sh])
-        for name in zsh:
-            self.ctx.run(["zsh", "-n", name])
-
-    def _lint_brewfiles(self) -> None:
-        for brewfile in self._brewfiles():
-            for number, line in enumerate(brewfile.read_text().splitlines(), 1):
-                text = line.strip()
-                if text and not text.startswith("#") and not CASK_LINE.match(text):
-                    raise SystemExit(
-                        f'{brewfile.name}:{number}: only `cask "name"` lines (and `brew "mise"`) allowed'
-                    )
-            if shutil.which("brew"):
-                self.ctx.run(
-                    ["brew", "bundle", "list", "--file", str(brewfile), "--cask"]
-                )
-
-    def _assert_global_fnox_empty(self) -> None:
-        # Secrets come only from `bake secret get`; the global fnox config must stay unused
-        path = Path.home() / ".config" / "fnox" / "config.toml"
-        if not path.exists():
-            return
-        # fnox exits 0 either way, so judge by output
-        secrets = self._fnox_out("list", "-c", str(path))
-        providers = self._fnox_out("provider", "list", "-c", str(path))
-        if providers or not secrets.startswith("No secrets defined"):
-            raise SystemExit(f"Global fnox config is not empty: {path}. Clear it.")
-
-    def _fnox_out(self, *args: str) -> str:
-        cmd = ["fnox", "--no-color", "--no-daemon", *args]
-        return self.ctx.run(
-            cmd, capture_output=True, stream=False, echo=False
-        ).stdout.strip()
-
-    def _setup_project(self) -> None:
-        super()._setup_project()
-        self._setup_dotfiles()
-
-    def _update_project(self) -> None:
-        super()._update_project()
-        self._update_dotfiles()
-
-    def _setup_dotfiles(self) -> None:
-        """This repo's own Setup steps, in order, after bakelib's."""
-        # before the key, so the assert runs once the age key and token exist
-        self._apply()
-        signing.SigningKey.for_this_machine(self.ctx).sync(create=True)
-
-    def _update_dotfiles(self) -> None:
-        """This repo's own Update steps, in order, after bakelib's."""
-        signing.SigningKey.for_this_machine(self.ctx).sync(create=False)
-
-    # Temporary until the enhancements decide where GitHub key clean-up lives
-    @command(
-        help="List GitHub GPG keys and offer to delete expired or never-expiring ones"
-    )
-    def clean_signing_keys(
-        self,
-        check: Annotated[
-            bool,
-            typer.Option(help="List only; fail if any key could be cleaned"),
-        ] = False,
-        yes: Annotated[
-            bool,
-            typer.Option(
-                "--yes",
-                "-y",
-                help="No prompts: delete every expired or never-expiring key",
-            ),
-        ] = False,
-    ) -> None:
-        key = signing.SigningKey.for_this_machine(self.ctx)
-        left = key.clean(check=check, yes=yes)
-        if check and left:
-            console.warning(f"{len(left)} GitHub GPG key(s) could be cleaned")
-            raise SystemExit(1)
-
-    @command(help="List copies of a declared mise tool that sit elsewhere on PATH")
-    def duplicates(self) -> None:
-        tool_bins: dict[str, list[Path]] = {}
-        root = Path(__file__).parents[2]
-        for key in sorted(duplicates_lib.declared_mise_tools(root)):
-            result = self.ctx.run(
-                ["mise", "bin-paths", key],
-                capture_output=True,
-                stream=False,
-                echo=False,
-                check=False,
-            )
-            # not installed yet: nothing to be a duplicate of
-            if result.returncode == 0 and result.stdout.strip():
-                tool_bins[key] = [Path(p) for p in result.stdout.split()]
-        path = [Path(p) for p in os.environ.get("PATH", "").split(os.pathsep) if p]
-        ignore = [
-            *map(Path, SYSTEM_BIN_DIRS),
-            # mise shims and project virtualenvs are not installs
-            *(p for p in path if p.parts[-2:] in (("mise", "shims"), (".venv", "bin"))),
-        ]
-        found = duplicates_lib.other_copies(tool_bins, path, ignore)
-        for copy in found:
-            console.echo(f"{copy.tool}: {copy.path}")
-        if found:
-            console.warning(
-                f"{len(found)} copy(ies) outside mise; remove each with the manager that owns it"
-            )
-        else:
-            console.success("No duplicates")
-
-    @command()
-    def apply(self) -> None:
-        """Link dotfiles into ~ with mise (never overwrites a regular file), then assert use-time needs"""
-        self._apply()
-
-    def _apply(self) -> None:
-        self._run_mise_dotfiles_apply()
-        self._assert_dotfiles_readiness()
-
-    def _run_mise_dotfiles_apply(self) -> None:
-        # No --force and no --yes: a conflicting regular file makes mise exit non-zero
-        cmd = ["mise", "dotfiles", "apply"]
-        if (Path(__file__).parents[2] / "private" / "src").is_dir():
-            cmd[1:1] = ["-E", "private"]
-        if self.ctx.run(cmd, check=False).returncode != 0:
-            console.error(
-                "Apply failed. If the output above names files that already exist and are not managed, "
-                "move or delete each one, then rerun `bake apply`. "
-                "To overwrite on purpose, run `mise dotfiles apply --force` yourself (not via bake)."
-            )
-            raise SystemExit(1)
-
-    def _assert_dotfiles_readiness(self) -> None:
-        # Read-only: reports names only, never values, and writes nothing
-        failures = self._bakelib_assert_failures()
-        if not failures:
-            failures = self._unresolved_secret_failures()
-        if failures:
-            for failure in failures:
-                console.error(failure)
-            console.error("Assert failed")
-            raise SystemExit(1)
-        console.success("Assert passed")
-
-    def _bakelib_assert_failures(self) -> list[str]:
-        # bakelib's asserts only print, so collect what they report
-        failures: list[str] = []
-        with (
-            patch.object(fnox_space.console, "error", side_effect=failures.append),
-            patch.object(fnox_space.console, "cmd"),
-        ):
-            self._assert_age_key()
-            self._assert_bootstrap_secrets()
-        return failures
-
-    def _unresolved_secret_failures(self) -> list[str]:
-        return [
-            f"secret {key} does not resolve"
-            for key in SECRET_KEYS
-            if not self._secret_resolves(key)
-        ]
-
-    def _secret_resolves(self, key: str) -> bool:
-        if self.vault().has_value(key):
-            return True
-        # not cached yet (fresh Mac): ask fnox directly, which does not write the cache
-        return run_fnox(["--no-daemon", "get", key]).returncode == 0
+class MyBakebook(
+    SecretsMixin,
+    ApplyMixin,
+    SetupUpdateMixin,
+    LintMixin,
+    MacosSettingsMixin,
+    MachineMixin,
+    TidyMixin,
+    UvCacheMixin,
+    GitHubActionsMixin,
+    SubmodulesUtils,
+    FnoxSpace[str | None],
+    PythonSpace,
+):
+    pass
 
 
 bakebook = MyBakebook()

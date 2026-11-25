@@ -2,6 +2,9 @@ name: test-e2e-fresh-machine
 
 on:
     workflow_call:
+        secrets:
+            BWS_ACCESS_TOKEN_DEV:
+                required: true
     schedule:
         - cron: "0 5 * * 1" # weekly, Monday 5 AM, to catch upstream drift
     workflow_dispatch:
@@ -18,15 +21,17 @@ jobs:
         runs-on: ${{ matrix.os }}
         env:
             FNOX_PROFILE: ci
+            DOTFILES_MACHINE_NAME: ci # no private machine list here, and no terminal to ask in
             MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
         steps:
             - name: checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   submodules: false
+                  persist-credentials: false
 
             - name: setup-mise
-              uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
+              uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
 
             - name: install-zsh
               # same as pre-commit.yml: lint runs `zsh -n`, and the Ubuntu runner ships without zsh
@@ -42,7 +47,7 @@ jobs:
             - name: pin-preinstalled-brew-formulas
               if: runner.os == 'macOS'
               # same as the bakefile repo: the real brew upgrade runs but skips the runner's own formulas
-              run: brew pin $(brew list --formula)
+              run: brew list --formula | xargs brew pin
 
             - name: store-bitwarden-token
               # no terminal to paste into, so store it the way a person would with bake secret set
@@ -57,6 +62,16 @@ jobs:
 
             - name: assert-setup-dev
               run: bake assert-setup-dev
+
+            - name: check-shell-startup-time
+              # loose limit: catches a module that slows every shell, not small drift
+              run: |
+                  zsh -i -c exit </dev/null >/dev/null 2>&1
+                  TIMEFORMAT=%R
+                  limit=1.5
+                  best=$(for _ in 1 2 3 4 5; do { time zsh -i -c exit </dev/null >/dev/null 2>&1; } 2>&1; done | sort -n | head -1)
+                  echo "fastest of 5 interactive zsh starts: ${best}s (limit ${limit}s)"
+                  awk -v t="$best" -v l="$limit" 'BEGIN { exit !(t <= l) }'
 
             - name: apply-again-and-check-links-unchanged
               run: |

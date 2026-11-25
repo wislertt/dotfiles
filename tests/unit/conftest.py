@@ -8,6 +8,7 @@ import pytest
 import typer
 
 from src.python import bakefile
+from src.python.core import repo
 
 
 class FakeCtx:
@@ -72,9 +73,7 @@ def bakebook(fake_ctx: FakeCtx, fake_vault: FakeVault) -> Iterator[bakefile.MyBa
 
 @pytest.fixture
 def fake_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A repo root without the private companion; bakefile finds it through `__file__`."""
-    monkeypatch.setattr(
-        bakefile, "__file__", str(tmp_path / "src" / "python" / "bakefile.py")
-    )
+    """A repo root without the private companion, in place of `repo.ROOT`."""
+    monkeypatch.setattr(repo, "ROOT", tmp_path)
     (tmp_path / "src" / "lib").mkdir(parents=True)
     return tmp_path

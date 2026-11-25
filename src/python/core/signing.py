@@ -3,7 +3,6 @@ import json
 import os
 import re
 import shutil
-import socket
 import subprocess
 import sys
 from collections.abc import Callable, Iterable, Mapping
@@ -14,6 +13,8 @@ from typing import Any
 
 import typer
 from bake import Context, console
+
+from src.python.core import machines
 
 # Each machine's key expires unless Update renews it, so a machine no longer in use drops off GitHub
 LIFETIME_DAYS = 30
@@ -72,8 +73,8 @@ def machine_tag(machine_id: str) -> str:
     return hashlib.sha256(machine_id.strip().lower().encode()).hexdigest()[:6]
 
 
-def title(hostname: str, tag: str) -> str:
-    return f"{TITLE_PREFIX}{hostname.split('.')[0]} ({tag})"
+def title(name: str, tag: str) -> str:
+    return f"{TITLE_PREFIX}{name} ({tag})"
 
 
 def tag_of(name: str) -> str | None:
@@ -141,13 +142,6 @@ def status(key: GithubKey, local_key_id: str | None, now: datetime) -> str:
     return "expired" if key.expires <= now else "live"
 
 
-def clean_candidates(
-    keys: Iterable[GithubKey], local_key_id: str | None, now: datetime
-) -> list[GithubKey]:
-    """Keys worth offering for deletion: expired, or never expiring (old keys)."""
-    return [k for k in keys if status(k, local_key_id, now) in ("expired", "no expiry")]
-
-
 def read_machine_tag(ctx: Context) -> str | None:
     if sys.platform == "darwin":
         out = ctx.run(
@@ -159,10 +153,7 @@ def read_machine_tag(ctx: Context) -> str | None:
         ).stdout
         raw = parse_ioreg_uuid(out)
     else:
-        files = (Path("/etc/machine-id"), Path("/var/lib/dbus/machine-id"))
-        raw = next(
-            (t for p in files if p.is_file() and (t := p.read_text().strip())), None
-        )
+        raw = machines.linux_id()
     return machine_tag(raw) if raw else None
 
 
@@ -178,7 +169,7 @@ class SigningKey:
         ctx: Context,
         *,
         tag: str | None,
-        hostname: str,
+        name: str | None,
         now: Callable[[], datetime] = _utcnow,
         interactive: bool = False,
         confirm_delete: Callable[[GithubKey], bool] | None = None,
@@ -186,18 +177,18 @@ class SigningKey:
     ) -> None:
         self.ctx = ctx
         self.tag = tag
-        self.hostname = hostname
+        self.name = name  # None when only reading GitHub's keys, as Tidy does
         self.now = now
         self.interactive = interactive
         self.confirm_delete = confirm_delete or self._ask_delete
         self.gpg_env = {"GNUPGHOME": str(gnupghome)} if gnupghome else None
 
     @classmethod
-    def for_this_machine(cls, ctx: Context) -> SigningKey:
+    def for_this_machine(cls, ctx: Context, name: str | None = None) -> SigningKey:
         return cls(
             ctx,
             tag=read_machine_tag(ctx),
-            hostname=socket.gethostname(),
+            name=name,
             interactive=sys.stdin.isatty(),
         )
 
@@ -241,7 +232,9 @@ class SigningKey:
         keys = self.github_keys()
         if keys is None:
             return
-        wanted = title(self.hostname, self.tag)
+        if self.name is None:
+            raise SystemExit("No machine name, so the GPG key cannot be titled")
+        wanted = title(self.name, self.tag)
         changes = plan(keys, local, wanted, self.now())
         for key in changes.delete:
             self.delete_github_key(key)
@@ -305,39 +298,10 @@ class SigningKey:
             return None
         return [github_key(k) for page in json.loads(result.stdout) for k in page]
 
-    def clean(self, check: bool, yes: bool = False) -> list[GithubKey]:
-        """List every GitHub GPG key; offer to delete expired and never-expiring ones. Returns what is left to clean."""
-        keys = self.github_keys()
-        if keys is None:
-            raise SystemExit(1)
+    def local_key_id(self) -> str | None:
         email = self._git_config("user.signingkey")
         local = self.local_key(email) if email else None
-        local_id = local.key_id if local else None
-        now = self.now()
-        for key in keys:
-            expires = key.expires.date().isoformat() if key.expires else "never"
-            console.echo(
-                f"{key.name or key.key_id:40}  {expires:10}  {status(key, local_id, now)}"
-            )
-        left: list[GithubKey] = []
-        for key in clean_candidates(keys, local_id, now):
-            reason = status(key, local_id, now)
-            if check:
-                delete = False
-            elif yes:
-                delete = True
-            else:
-                delete = self.interactive and typer.confirm(
-                    f"Delete {key.name or key.key_id!r} ({reason})?", default=True
-                )
-            if delete:
-                self.delete_github_key(key)
-                console.success(f"Deleted {key.name or key.key_id!r}")
-            else:
-                if not check:
-                    console.info(f"Kept {key.name or key.key_id!r} ({reason})")
-                left.append(key)
-        return left
+        return local.key_id if local else None
 
     def delete_github_key(self, key: GithubKey) -> None:
         self._gh("api", "-X", "DELETE", f"user/gpg_keys/{key.id}")

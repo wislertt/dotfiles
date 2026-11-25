@@ -2,6 +2,10 @@
 	defaultBranch = main
 [commit]
 	gpgsign = true
+[status]
+	submoduleSummary = true
+[diff]
+	submodule = log
 [credential]
 	helper =
 	# Resolved on PATH (mise); never run `git-credential-manager configure`, it writes a versioned path here

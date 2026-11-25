@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# sudo -A helper: bake detaches commands from the terminal, so sudo asks in a dialog instead
+set -euo pipefail
+[[ "${OSTYPE}" == darwin* ]] || exit 1
+/usr/bin/osascript - "${1:-Password:}" <<'APPLESCRIPT'
+on run argv
+    set reply to display dialog ("bake needs your password for Homebrew. " & item 1 of argv) default answer "" with hidden answer with title "bake" with icon caution
+    return text returned of reply
+end run
+APPLESCRIPT

@@ -6,11 +6,11 @@ Blocked by: None (can start immediately)
 
 Spec: `.tracker/enhancements/spec.md` (stories 28-32, 43).
 
-**What to build:** A new `latest` release waits a week before mise installs it, workflows are checked for security issues, and CI fails when shell startup gets slow.
+**What to build:** mise's default 24-hour cooldown on new releases is relied on and recorded, workflows are checked for security issues, and CI fails when shell startup gets slow.
 
-- [ ] mise's minimum release age is 7 days in the repo and global mise configs, with a one-line comment why; setting name and per-tool exclusion checked against the mise security docs first; ADR 0002 notes it next to "latest, no lockfile"
-- [ ] `mise install` and `bake update` still succeed with the cooldown
-- [ ] zizmor runs as a pre-commit hook, so `bake lint` and CI run it, in both repos
-- [ ] Every zizmor finding is fixed, or allowed inline with a one-line reason
-- [ ] A CI step times interactive zsh startup and fails above a loose limit
+- [x] No `minimum_release_age` setting: mise's 24h default (every backend, and npm/pypi transitive dependencies) is enough; the installed mise is checked to hold back a release under 24 hours old
+- [x] ADR 0002 notes the default cooldown next to "latest, no lockfile", and how to exempt one tool
+- [x] zizmor runs in `bake lint --slow` (so the pre-commit workflow runs it, with the job's token), in both repos, through a subclass of bakelib's `GitHubActionsTools` (which also brings actionlint and actions-up), marked TODO to move zizmor into bakelib
+- [x] Every zizmor finding is fixed, or allowed inline with a one-line reason (`self-repository` is disabled in `.github/zizmor.yml`: actionlint rejects the `$/` syntax)
+- [x] A CI step times interactive zsh startup and fails above a loose limit
 - [ ] `bake lint` passes; CI green
