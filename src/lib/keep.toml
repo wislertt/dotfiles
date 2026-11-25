@@ -1,0 +1,4 @@
+# Keep list: Strays `bake tidy` passes over. One `"kind:name" = "reason"` per entry, keys as Tidy prints them.
+# Entries that reveal an account, employer or work setup go in private/src/lib/keep.toml.
+
+"app:Safari" = "ships with macOS"

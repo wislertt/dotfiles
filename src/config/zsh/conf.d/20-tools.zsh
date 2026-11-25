@@ -18,8 +18,13 @@ autoload -Uz compinit
 compinit
 zstyle ':completion:*' menu select
 
-# launchctl: GUI apps launched from Spotlight or the Dock inherit this PATH.
-command -v launchctl >/dev/null && launchctl setenv PATH "$PATH" 2>/dev/null
+# launchctl: GUI apps inherit this PATH; built from a clean login shell, not this one, so an inherited entry cannot cycle back.
+[[ $OSTYPE == darwin* ]] && (( $+commands[launchctl] )) && {
+    () {
+        local -aU dirs=(${^${(s.:.)"$(env -i HOME=$HOME USER=$USER LOGNAME=$LOGNAME SHELL=/bin/zsh PATH=/usr/bin:/bin:/usr/sbin:/sbin /bin/zsh -lc 'print -r -- $PATH')"}}(N-/))
+        (( $#dirs )) && launchctl setenv PATH "${(j.:.)dirs}"
+    } &>/dev/null &!
+}
 
 # mise: activate managed tool versions
 eval "$(mise activate zsh)"

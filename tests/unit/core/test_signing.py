@@ -1,10 +1,10 @@
 from datetime import UTC, datetime, timedelta
 
-from src.python import signing
+from src.python.core import signing
 
 NOW = datetime(2026, 11, 23, tzinfo=UTC)
 TAG = signing.machine_tag("UUID-1")
-TITLE = signing.title("mac-21.local", TAG)
+TITLE = signing.title("work-mac", TAG)
 LOCAL = signing.LocalKey("AAAA", "FPR-AAAA", NOW + timedelta(days=30))
 
 COLONS = """\
@@ -43,8 +43,8 @@ def test_parse_ioreg_uuid() -> None:
     assert signing.parse_ioreg_uuid("nothing") is None
 
 
-def test_title_uses_the_short_hostname_and_the_tag_round_trips() -> None:
-    assert TITLE == f"dotfiles: mac-21 ({TAG})"
+def test_title_uses_the_machine_name_and_the_tag_round_trips() -> None:
+    assert TITLE == f"dotfiles: work-mac ({TAG})"
     assert signing.tag_of(TITLE) == TAG
     assert signing.tag_of("old-laptop") is None
 
@@ -132,13 +132,12 @@ def test_plan_never_touches_keys_without_the_dotfiles_title() -> None:
     assert plan.expired == []
 
 
-def test_clean_offers_expired_and_never_expiring_keys_but_not_this_machine() -> None:
+def test_status_names_this_machine_live_expired_and_never_expiring_keys() -> None:
     mine = _gh(1, TITLE, "AAAA", NOW + timedelta(days=30))
     live = _gh(2, "dotfiles: linux (abcdef)", "BBBB", NOW + timedelta(days=5))
     dead = _gh(3, "dotfiles: old-mac (123456)", "CCCC", NOW - timedelta(days=1))
     old = _gh(4, "old-laptop", "DDDD", None)
     keys = [mine, live, dead, old]
-    assert signing.clean_candidates(keys, "AAAA", NOW) == [dead, old]
     assert [signing.status(k, "AAAA", NOW) for k in keys] == [
         "this machine",
         "live",

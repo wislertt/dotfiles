@@ -1,0 +1,3 @@
+# Tidy settings. `repos`: folders whose repos (one or two levels down) are read for rust-toolchain pins.
+
+repos = ["~/vault/repos"]

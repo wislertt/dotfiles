@@ -15,7 +15,7 @@ Each thing lives in exactly one home.
 
 - **Apply** (`bake apply`): links the dotfiles, then asserts.
 - **Setup** (`bake setup-dev`): installs what is missing (mise tools, and on macOS the Brewfile apps), never upgrades mise tools, ends with Apply.
-- **Update** (`bake update`): upgrades tools and, on macOS, Brewfile apps, on demand.
+- **Update** (`bake update`): upgrades tools and, on macOS, Brewfile apps, then prunes the old versions and caches it replaced, on demand.
 - **Use**: not a command. Whenever a linked script or shell start runs.
 
 Terms are in [GLOSSARY.md](GLOSSARY.md), decisions in [docs/adr/](docs/adr/).
@@ -34,13 +34,13 @@ The Brewfile apps (`src/lib/Brewfile`, casks plus mise itself) are installed on 
 
 ## Everyday
 
-`bake update` upgrades tools and, on macOS, the Brewfile apps, only when you run it.
+`bake update` upgrades tools and, on macOS, the Brewfile apps, only when you run it, then removes the old versions and caches it replaced (`mise prune`, `uv cache prune` and, on macOS, `brew cleanup`).
 
 `bake apply` links the dotfiles into `~`, then asserts (age key present, Bitwarden token stored, each declared secret resolves). It prints no secret values and writes nothing, but resolving a secret may contact the secret store. If the assert fails, it reports what is missing; on a new machine `bake setup-dev` sets up the age key and token.
 
 The repo root is also linked to `~/.config/bake`, which makes this the global bake: after `bake apply`, `bake <command>` works from any folder without a `bakefile.py`, and `bake -g <command>` reaches it from inside another project. It needs bakefile 0.0.87 or newer (earlier versions fail from a folder that has its own `src/__init__.py`).
 
-`bake duplicates` lists copies of a declared mise tool that sit elsewhere on `PATH` (for example a Homebrew `jq` after `jq` moved to `mise.toml`). It only reports: remove each copy with the package manager that owns it.
+`bake tidy` lists Strays: anything installed that no mise config, Brewfile or Keep list accounts for (Homebrew formulas and casks, `uv tool`, `cargo install`, global npm and pnpm packages, dead links on `PATH`, old tool-manager folders, apps, copies of a mise tool elsewhere on `PATH`, unknown files in `~/.local/bin`, Rust toolchains other than `stable`, `beta` and `nightly` that no repo pins). The repos read for `rust-toolchain.toml` and `rust-toolchain` pins are named in `src/lib/tidy.toml`; only repo roots one or two folders down are read. It also covers expired GitHub signing keys and ones that never expire, and every SSH key on the GitHub account (git uses HTTPS). It removes each Stray it can with the manager that owns it, without asking, and lists the rest with the command to run: anything needing sudo, apps, unknown `~/.local/bin` files, copies of a mise tool, signing keys that never expire and GitHub SSH keys. Run `bake tidy --check` first: it lists everything, removes nothing and fails if there are any. To keep a Stray, add `"kind:name" = "reason"` to `src/lib/keep.toml` (or `private/src/lib/keep.toml` if it says who or where). See ADR 0003.
 
 ## Conflicts
 

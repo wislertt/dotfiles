@@ -4,8 +4,7 @@ on:
     pull_request:
         types: [opened, synchronize, reopened]
 
-permissions:
-    contents: write
+permissions: {}
 
 jobs:
     # ====================================================
@@ -13,6 +12,9 @@ jobs:
     # ====================================================
     check-pre-release:
         name: check-pre-release
+        permissions:
+            contents: read
+            pull-requests: read
         uses: wislertt/zerv/.github/workflows/shared-check-pr-label-and-branch.yml@348c40b7e38f9ac640b85919de2d45c7077f6507 # v0.8.42
         with:
             target_label: "pre-release"
@@ -22,6 +24,8 @@ jobs:
     zerv-versioning:
         name: zerv-versioning
         needs: check-pre-release
+        permissions:
+            contents: read
         uses: wislertt/zerv/.github/workflows/shared-zerv-versioning.yml@348c40b7e38f9ac640b85919de2d45c7077f6507 # v0.8.42
         with:
             schema: >-
@@ -32,6 +36,8 @@ jobs:
     tag-pre-release:
         name: tag-pre-release
         needs: [zerv-versioning, check-pre-release]
+        permissions:
+            contents: write
         if: needs.check-pre-release.outputs.is_valid == 'true'
         uses: wislertt/zerv/.github/workflows/shared-create-tags.yml@348c40b7e38f9ac640b85919de2d45c7077f6507 # v0.8.42
         with:
@@ -41,11 +47,18 @@ jobs:
     # Test and Lint
     # ====================================================
     test:
+        permissions:
+            contents: read
         uses: ./.github/workflows/test.yml
 
     pre-commit:
+        permissions:
+            contents: read
         uses: ./.github/workflows/pre-commit.yml
 
     test-e2e-fresh-machine:
+        permissions:
+            contents: read
         uses: ./.github/workflows/test-e2e-fresh-machine.yml
-        secrets: inherit
+        secrets:
+            BWS_ACCESS_TOKEN_DEV: ${{ secrets.BWS_ACCESS_TOKEN_DEV }}

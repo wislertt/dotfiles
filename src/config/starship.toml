@@ -1,3 +1,6 @@
+# mise shims can pass the 500 ms default on the first prompt after the Mac wakes
+command_timeout = 2000
+
 [conda]
 truncation_length = 2
 ignore_base = false
