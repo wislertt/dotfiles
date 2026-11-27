@@ -18,7 +18,11 @@ UPLOAD = f"gh api user/gpg_keys -f name={TITLE} -f armored_public_key=ARMOR"
 
 def _colons(expires: datetime | None) -> str:
     stamp = str(int(expires.timestamp())) if expires else ""
-    return f"sec:u:255:22:AAAA:1:{stamp}::u:::scSC:::+::ed25519:::0:\nfpr:::::::::FPR-AAAA:\n"
+    return (
+        f"sec:u:255:22:AAAA:1:{stamp}::u:::scSC:::+::ed25519:::0:\n"
+        "fpr:::::::::FPR-AAAA:\n"
+        "uid:u::::1::X::Ann Lee <a@b.c>::::::::::0:\n"
+    )
 
 
 def _api(id_: int, name: str, key_id: str, expires: datetime | None) -> dict[str, Any]:
@@ -121,6 +125,68 @@ def test_a_key_due_or_expired_or_never_expiring_is_renewed_and_replaced(
     assert _cmds(fake_ctx, "gpg --batch") == [
         "gpg --batch --quick-set-expire FPR-AAAA 30d"
     ]
+
+
+INCLUDES = r"git config --global --includes --get-regexp ^includeif\..*\.path$"
+WORK_EMAIL = "git config --file /home/ann/.config/git/work.inc --get user.email"
+ADD_UID = "gpg --batch --quick-add-uid FPR-AAAA Ann Lee <ann@work.example>"
+
+
+def _work_include(fake_ctx: FakeCtx, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", "/home/ann")
+    fake_ctx.stdout[INCLUDES] = "includeif.gitdir:~/work/.path ~/.config/git/work.inc\n"
+    fake_ctx.stdout[WORK_EMAIL] = "ann@work.example\n"
+
+
+def test_identity_emails_add_each_conditional_includes_email(
+    fake_ctx: FakeCtx, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _work_include(fake_ctx, monkeypatch)
+    assert _key(fake_ctx).identity_emails("<a@b.c>") == ["a@b.c", "ann@work.example"]
+
+
+def test_identity_emails_is_the_signing_email_without_includes(
+    fake_ctx: FakeCtx,
+) -> None:
+    assert _key(fake_ctx).identity_emails("<a@b.c>") == ["a@b.c"]
+
+
+def test_a_key_missing_an_include_email_gains_it_and_is_reuploaded(
+    fake_ctx: FakeCtx, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    expires = NOW + timedelta(days=20)
+    _work_include(fake_ctx, monkeypatch)
+    keys = iter(
+        [
+            signing.parse_secret_key(_colons(expires)),
+            signing.LocalKey(
+                "AAAA", "FPR-AAAA", expires, frozenset({"a@b.c", "ann@work.example"})
+            ),
+        ]
+    )
+    monkeypatch.setattr(
+        signing.SigningKey, "local_key", lambda _self, _email: next(keys)
+    )
+    _github(fake_ctx, _api(1, TITLE, "AAAA", expires))
+    _key(fake_ctx).sync(create=False)
+    assert _cmds(fake_ctx, "gpg --batch") == [ADD_UID]
+    assert _writes(fake_ctx) == ["gh api -X DELETE user/gpg_keys/1", UPLOAD]
+
+
+def test_a_key_holding_every_include_email_is_left_alone(
+    fake_ctx: FakeCtx, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    expires = NOW + timedelta(days=20)
+    _work_include(fake_ctx, monkeypatch)
+    fake_ctx.stdout[LIST_SECRET] = (
+        _colons(expires) + "uid:u::::1::Y::Ann Lee <ann@work.example>::::::::::0:\n"
+    )
+    both = _api(1, TITLE, "AAAA", expires)
+    both["emails"].append({"email": "ann@work.example", "verified": True})
+    _github(fake_ctx, both)
+    _key(fake_ctx).sync(create=False)
+    assert _cmds(fake_ctx, "gpg --batch") == []
+    assert _writes(fake_ctx) == []
 
 
 def test_publish_replaces_this_machines_stale_entry_without_the_shell_token(

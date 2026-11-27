@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -22,6 +22,7 @@ TITLE_PREFIX = "dotfiles: "
 GH_TOKEN_VARS = ("GITHUB_TOKEN", "GH_TOKEN")
 _TITLE = re.compile(rf"^{re.escape(TITLE_PREFIX)}.* \(([0-9a-f]{{6}})\)$")
 _IOREG_UUID = re.compile(r'"IOPlatformUUID" = "([^"]+)"')
+_UID_EMAIL = re.compile(r"<([^<>]+)>")
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,7 @@ class LocalKey:
     key_id: str
     fingerprint: str
     expires: datetime | None
+    emails: frozenset[str] = field(default_factory=frozenset)
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,7 @@ class GithubKey:
     key_id: str
     expires: datetime | None
     email_verified: bool
+    emails: frozenset[str] = field(default_factory=frozenset)
 
 
 @dataclass(frozen=True)
@@ -51,16 +54,31 @@ class Plan:
 def parse_secret_key(colons: str) -> LocalKey | None:
     """The first secret key in `gpg --list-secret-keys --with-colons` output."""
     sec: list[str] | None = None
+    fingerprint: str | None = None
+    emails: set[str] = set()
     for line in colons.splitlines():
         fields = line.split(":")
-        if fields[0] == "sec" and sec is None:
+        if fields[0] == "sec":
+            if sec is not None:
+                break
             sec = fields
-        elif fields[0] == "fpr" and sec is not None:
-            expires = (
-                datetime.fromtimestamp(int(sec[6]), UTC) if sec[6].strip() else None
-            )
-            return LocalKey(sec[4], fields[9], expires)
-    return None
+        elif sec is None:
+            continue
+        elif fields[0] == "fpr" and fingerprint is None:
+            fingerprint = fields[9]
+        elif fields[0] == "uid" and fields[1] != "r":
+            match = _UID_EMAIL.search(fields[9])
+            if match:
+                emails.add(match.group(1))
+    if sec is None or fingerprint is None:
+        return None
+    expires = datetime.fromtimestamp(int(sec[6]), UTC) if sec[6].strip() else None
+    return LocalKey(sec[4], fingerprint, expires, frozenset(emails))
+
+
+def signing_email(value: str) -> str:
+    """The bare email in a `user.signingkey` written as `<email>`."""
+    return value.strip().removeprefix("<").removesuffix(">")
 
 
 def parse_ioreg_uuid(text: str) -> str | None:
@@ -90,12 +108,14 @@ def needs_renewal(key: LocalKey, now: datetime) -> bool:
 
 def github_key(data: Mapping[str, Any]) -> GithubKey:
     expires = data.get("expires_at")
+    emails = data.get("emails") or []
     return GithubKey(
         id=int(data["id"]),
         name=str(data.get("name") or ""),
         key_id=str(data["key_id"]),
         expires=datetime.fromisoformat(expires) if expires else None,
-        email_verified=any(e.get("verified") for e in data.get("emails") or []),
+        email_verified=bool(emails) and all(e.get("verified") for e in emails),
+        emails=frozenset(str(e["email"]) for e in emails if e.get("email")),
     )
 
 
@@ -119,6 +139,8 @@ def plan(
             if k.key_id == local.key_id
             and k.name == wanted_title
             and _same_second(k.expires, local.expires)
+            # GitHub reads a key's emails only at upload, so an added UID means a new upload
+            and local.emails <= k.emails
         ),
         None,
     )
@@ -218,8 +240,61 @@ class SigningKey:
             console.success("GPG signing key renewed")
         else:
             console.success("GPG signing key present")
+        local = self._add_identity_uids(local, email)
         self.publish(local)
         return local
+
+    def identity_emails(self, signingkey: str) -> list[str]:
+        """Emails git may commit as: the signing email, then each conditional include's."""
+        emails = [signing_email(signingkey)]
+        # An include can switch user.email per folder, and GitHub verifies only emails on the key
+        listing = self.ctx.run(
+            [
+                "git",
+                "config",
+                "--global",
+                "--includes",
+                "--get-regexp",
+                r"^includeif\..*\.path$",
+            ],
+            capture_output=True,
+            stream=False,
+            echo=False,
+            check=False,
+        ).stdout
+        for line in listing.splitlines():
+            _, _, path = line.partition(" ")
+            if not path.strip():
+                continue
+            email = self.ctx.run(
+                [
+                    "git",
+                    "config",
+                    "--file",
+                    os.path.expanduser(path.strip()),
+                    "--get",
+                    "user.email",
+                ],
+                capture_output=True,
+                stream=False,
+                echo=False,
+                check=False,
+            ).stdout.strip()
+            if email and email not in emails:
+                emails.append(email)
+        return emails
+
+    def _add_identity_uids(self, local: LocalKey, signingkey: str) -> LocalKey:
+        missing = [e for e in self.identity_emails(signingkey) if e not in local.emails]
+        if not missing:
+            return local
+        name = self._git_config("user.name")
+        for email in missing:
+            self.gpg(
+                "--batch", "--quick-add-uid", local.fingerprint, f"{name} <{email}>"
+            )
+        console.success(f"GPG signing key gained {len(missing)} email(s)")
+        return self.local_key(signingkey) or local
 
     def local_key(self, email: str) -> LocalKey | None:
         result = self.gpg("--list-secret-keys", "--with-colons", email, check=False)
@@ -258,7 +333,7 @@ class SigningKey:
             console.success("GPG key on GitHub is current")
         if not ours.email_verified:
             console.warning(
-                "The key's email is not verified on GitHub, so its commits show as Unverified"
+                "An email on the key is not verified on GitHub, so commits as it show as Unverified"
             )
         for key in changes.expired:
             if self.confirm_delete(key):
