@@ -15,16 +15,38 @@ uid:u::::1795425525::X::Ann Lee <a@b.c>::::::::::0:
 
 
 def _gh(
-    id_: int, name: str, key_id: str, expires: datetime | None, verified: bool = True
+    id_: int,
+    name: str,
+    key_id: str,
+    expires: datetime | None,
+    verified: bool = True,
+    emails: frozenset[str] = frozenset(),
 ) -> signing.GithubKey:
-    return signing.GithubKey(id_, name, key_id, expires, verified)
+    return signing.GithubKey(id_, name, key_id, expires, verified, emails)
 
 
 def test_parse_secret_key_reads_id_fingerprint_and_expiry() -> None:
     key = signing.parse_secret_key(COLONS)
     assert key == signing.LocalKey(
-        "AAAA", "FPR-AAAA", datetime.fromtimestamp(1803201525, UTC)
+        "AAAA",
+        "FPR-AAAA",
+        datetime.fromtimestamp(1803201525, UTC),
+        frozenset({"a@b.c"}),
     )
+
+
+def test_parse_secret_key_reads_every_live_uid_of_the_first_key_only() -> None:
+    colons = COLONS + (
+        "uid:u::::1795425525::Y::Ann Lee <ann@work.example>::::::::::0:\n"
+        "uid:r::::1795425525::Z::Ann Lee <old@b.c>::::::::::0:\n"
+        "sec:u:255:22:BBBB:1:2::u:::scSC:::+::ed25519:::0:\n"
+        "fpr:::::::::FPR-BBBB:\n"
+        "uid:u::::1::W::Bob <bob@b.c>::::::::::0:\n"
+    )
+    key = signing.parse_secret_key(colons)
+    assert key is not None
+    assert key.fingerprint == "FPR-AAAA"
+    assert key.emails == {"a@b.c", "ann@work.example"}
 
 
 def test_parse_secret_key_reads_a_key_that_never_expires() -> None:
@@ -77,8 +99,25 @@ def test_github_key_reads_the_api_shape() -> None:
         }
     )
     assert key == _gh(
-        7, TITLE, "AAAA", datetime(2027, 2, 21, 4, tzinfo=UTC), verified=False
+        7,
+        TITLE,
+        "AAAA",
+        datetime(2027, 2, 21, 4, tzinfo=UTC),
+        verified=False,
+        emails=frozenset({"a@b.c"}),
     )
+
+
+def test_github_key_is_verified_only_when_every_email_is() -> None:
+    def key(*verified: bool) -> signing.GithubKey:
+        emails = [{"email": f"{i}@b.c", "verified": v} for i, v in enumerate(verified)]
+        return signing.github_key(
+            {"id": 1, "name": TITLE, "key_id": "AAAA", "emails": emails}
+        )
+
+    assert key(True, True).email_verified
+    assert not key(True, False).email_verified
+    assert not key().email_verified
 
 
 def test_plan_uploads_when_github_has_no_key_for_this_machine() -> None:
@@ -91,6 +130,16 @@ def test_plan_changes_nothing_when_github_holds_the_current_key() -> None:
     plan = signing.plan([current], LOCAL, TITLE, NOW)
     assert not plan.upload
     assert plan.delete == []
+
+
+def test_plan_replaces_the_github_copy_when_the_key_gained_an_email() -> None:
+    local = signing.LocalKey(
+        "AAAA", "FPR-AAAA", LOCAL.expires, frozenset({"a@b.c", "ann@work.example"})
+    )
+    stale = _gh(1, TITLE, "AAAA", LOCAL.expires, emails=frozenset({"a@b.c"}))
+    plan = signing.plan([stale], local, TITLE, NOW)
+    assert plan.upload
+    assert plan.delete == [stale]
 
 
 def test_plan_replaces_this_machines_entry_after_a_renewal() -> None:
