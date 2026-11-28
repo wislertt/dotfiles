@@ -2,9 +2,6 @@ name: test-e2e-fresh-machine
 
 on:
     workflow_call:
-        secrets:
-            BWS_ACCESS_TOKEN_DEV:
-                required: true
     schedule:
         - cron: "0 5 * * 1" # weekly, Monday 5 AM, to catch upstream drift
     workflow_dispatch:
@@ -12,13 +9,25 @@ on:
 permissions:
     contents: read
 
+concurrency:
+    group: ${{ github.workflow }}-e2e-${{ github.ref }}
+    cancel-in-progress: true
+
+defaults:
+    run:
+        # bash -eo pipefail, so a failing command in a pipeline fails the step
+        shell: bash
+
 jobs:
     test-e2e-fresh-machine:
+        name: test-e2e-fresh-machine
         strategy:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest, macos-latest]
         runs-on: ${{ matrix.os }}
+        environment: development
+        timeout-minutes: 60
         env:
             FNOX_PROFILE: ci
             DOTFILES_MACHINE_NAME: ci # no private machine list here, and no terminal to ask in
@@ -35,17 +44,17 @@ jobs:
 
             - name: install-zsh
               # same as pre-commit.yml: lint runs `zsh -n`, and the Ubuntu runner ships without zsh
-              if: runner.os == 'Linux'
+              if: ${{ runner.os == 'Linux' }}
               run: sudo apt-get install -y zsh
 
             - name: install-dependencies
               run: uv sync --all-extras --all-groups --frozen
 
             - name: setup-path
-              run: echo "${{ github.workspace }}/.venv/bin" >> "$GITHUB_PATH"
+              run: echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
             - name: pin-preinstalled-brew-formulas
-              if: runner.os == 'macOS'
+              if: ${{ runner.os == 'macOS' }}
               # same as the bakefile repo: the real brew upgrade runs but skips the runner's own formulas
               run: brew list --formula | xargs brew pin
 
@@ -55,7 +64,7 @@ jobs:
                   bake setup-fnox
                   bake secret set FNOX_BWS_ACCESS_TOKEN "$BWS_TOKEN"
               env:
-                  BWS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN_DEV }}
+                  BWS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }}
 
             - name: setup-dev
               run: bake setup-dev
@@ -75,8 +84,8 @@ jobs:
 
             - name: apply-again-and-check-links-unchanged
               run: |
-                  find "$HOME" -maxdepth 6 -type l -lname "${{ github.workspace }}/*" | sort > links-first.txt
+                  find "$HOME" -maxdepth 6 -type l -lname "$GITHUB_WORKSPACE/*" | sort > links-first.txt
                   bake apply
-                  find "$HOME" -maxdepth 6 -type l -lname "${{ github.workspace }}/*" | sort > links-second.txt
+                  find "$HOME" -maxdepth 6 -type l -lname "$GITHUB_WORKSPACE/*" | sort > links-second.txt
                   test -s links-first.txt
                   diff links-first.txt links-second.txt

@@ -6,9 +6,15 @@ on:
 permissions:
     contents: read
 
+defaults:
+    run:
+        shell: bash
+
 jobs:
     pre-commit:
+        name: pre-commit
         runs-on: ubuntu-latest
+        timeout-minutes: 20
         steps:
             - name: checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,7 +34,7 @@ jobs:
               run: uv sync --all-extras --all-groups --frozen
 
             - name: setup-path
-              run: echo "${{ github.workspace }}/.venv/bin" >> "$GITHUB_PATH"
+              run: echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
             - name: run-pre-commit
               run: SKIP=lint pre-commit run --all-files
@@ -36,5 +42,5 @@ jobs:
             - name: run-lint
               run: bake lint --slow
               env:
-                  # lets zizmor run its online audits (impostor commits, known-vulnerable actions)
+                  # lets jactionlint run its online checks (impostor commits, known-vulnerable actions)
                   GH_TOKEN: ${{ github.token }}

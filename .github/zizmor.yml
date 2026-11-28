@@ -1,5 +1,0 @@
-rules:
-    self-repository:
-        # actionlint rejects GitHub's `$/` self-repository syntax, so local workflows stay `./`
-        # TODO: drop this rule and switch to `$/` once actionlint supports it (rhysd/actionlint#711, fix in rhysd/actionlint#732)
-        disable: true

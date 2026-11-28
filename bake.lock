@@ -1,0 +1,15 @@
+version = 1
+revision = 1
+
+[managed-content.".github/renovate.json5"]
+template = "bakelib.space:renovate.json5"
+hash = "sha256:1cc1d771707519e5a866b9286b300a48d951c4dc3d589e0e1e29aa17bb2b97d7"
+
+[managed-content.".gitignore"]
+template = "bakelib.space:gitignore"
+hash = "sha256:1a2f438e245d8146045691ac41ce93a0bd4774cfd40c4637af0a4bbaec4698b4"
+editable.repo = "# the Python template above ignores lib/; src/lib holds data read by src/bin scripts\n!src/lib/\n\n# Homebrew bundle lock: never written here (ADR 0002)\nBrewfile.lock.json\n\n# kept from the toptal template this file used before managed content\n# Icon must end with two \\r\nIcon[\r]\n*.icloud\n*.py,cover\n.pdm.toml\npoetry.toml\npyrightconfig.json\n.history\n.ionide\n"
+
+[managed-content."oxfmt.config.ts"]
+template = "bakelib.space:oxfmt-config.ts"
+hash = "sha256:0d588fb50209dba05c805111bc1750eca893117307af7b7a87589d49252b35f6"

@@ -24,12 +24,12 @@ source = "."
 root = "."
 
 [tools]
-actionlint = "latest"
 # latest by default; pin a version only if a release breaks something, and say why
 age = "latest"
 bitwarden-secrets-manager = "latest"
 bun = "latest"
 fnox = "latest"
+jactionlint = "latest"
 jq = "latest"
 "npm:actions-up" = "latest"
 "npm:oxfmt" = "latest"
@@ -39,4 +39,3 @@ jq = "latest"
 "pipx:zerv-version" = "latest"
 shellcheck = "latest"
 uv = "latest"
-zizmor = "latest"

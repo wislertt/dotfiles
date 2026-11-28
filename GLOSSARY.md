@@ -72,6 +72,36 @@ _Avoid_: Temp, cache (a cache is one kind of disposable)
 The machine's own GPG key for signing commits, created by Setup and never copied off the machine. It expires 30 days out; Setup and Update renew the same key when under half that remains and keep GitHub holding exactly one copy per machine, titled `dotfiles: <machine name> (<machine tag>)`. It carries a UID for each email git may commit as (the signing email and the `user.email` of each conditional include), because GitHub verifies a commit only when its committer email is on the key; a UID added later means a new upload. A machine no longer in use stops renewing, so its key expires and Update offers to delete it from GitHub.
 _Avoid_: GPG key (ambiguous with keys added by hand), rotation (renewal keeps the same key)
 
+### Skills
+
+**Own skill**:
+A skill written by the owner of these dotfiles. Every Own skill is private: it lives in the private companion repo and installs from there the same way an Upstream skill installs from its source repo. Whether it is a Global skill or a Repo skill depends on who declares it, not on where it lives.
+_Avoid_: Custom skill, local skill
+
+**Upstream skill**:
+A skill written by someone else, installed from its source repo at a pinned version and never edited in place.
+_Avoid_: Third-party skill, vendored skill
+
+**Global skill**:
+A skill useful in any repo, so it is installed once per machine and every agent sees it everywhere. Only these dotfiles (the public repo and its private companion) declare Global skills; any other repo declares Repo skills.
+_Avoid_: User skill, personal skill
+
+**Repo skill**:
+A skill tied to a stack, tool or domain that only some repos have, so each repo that needs it declares it and installs it.
+_Avoid_: Project skill, local skill
+
+**Tool skill**:
+A Global skill that a tool installs and updates itself (Orca's skills), declared with its owner and a Skill visibility level but no source. The installer never touches it, it is never a Stray, and nothing fails when it is missing.
+_Avoid_: Bundled skill, built-in skill
+
+**Skill manifest**:
+The declared list of skills, Upstream and Own, with their pins. The public one is in this repo; a private one in the private companion repo holds the Own skills and any Upstream skill that reveals an account or employer. A skill on disk that no manifest declares is a Stray.
+_Avoid_: Lock (the installer's own record), skill list
+
+**Skill visibility**:
+How much of a skill an agent offers, as one level per skill that holds in every agent: Shown (the model sees its name and description and may use it on its own), User-only (hidden from the model, but the user can still invoke it by name) or Off (not available at all, kept only for an unwanted skill that arrives inside a package that cannot be split). A skill no one wants is not declared, rather than declared Off.
+_Avoid_: Enabled, active, name-only
+
 ### Verification
 
 **Fresh-machine job** (workflow `test-e2e-fresh-machine`):
