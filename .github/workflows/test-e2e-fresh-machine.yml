@@ -4,7 +4,7 @@ on:
     workflow_call:
         secrets:
             BWS_ACCESS_TOKEN:
-                required: false # the development environment supplies the value
+                required: true # without it the token silently arrives empty
     schedule:
         - cron: "0 5 * * 1" # weekly, Monday 5 AM, to catch upstream drift
     workflow_dispatch:

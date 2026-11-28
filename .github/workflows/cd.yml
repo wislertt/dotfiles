@@ -64,3 +64,5 @@ jobs:
         permissions:
             contents: read
         uses: $/.github/workflows/test-e2e-fresh-machine.yml
+        secrets:
+            BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }} # resolved from the called job's development environment
