@@ -8,6 +8,11 @@ on:
 
 permissions: {}
 
+# a new push waits: cancelling semantic-release halfway leaves a half-done release
+concurrency:
+    group: ${{ github.workflow }}-caller-${{ github.ref }}
+    cancel-in-progress: false
+
 jobs:
     # ====================================================
     # Versioning and Release
@@ -15,9 +20,9 @@ jobs:
     semantic-release:
         name: semantic-release
         permissions:
-            contents: write
-            issues: write
-            pull-requests: write
+            contents: write # push the release commit and tag
+            issues: write # comment on the issues a release closes
+            pull-requests: write # comment on the pull requests a release includes
         uses: wislertt/zerv/.github/workflows/shared-semantic-release.yml@348c40b7e38f9ac640b85919de2d45c7077f6507 # v0.8.42
         with:
             allowed_workflow_dispatch_branches: '["main"]'
@@ -27,13 +32,13 @@ jobs:
         needs: semantic-release
         permissions:
             contents: read
-        if: needs.semantic-release.outputs.is_valid_semantic_release == 'true'
+        if: ${{ needs.semantic-release.outputs.is_valid_semantic_release == 'true' }}
         uses: wislertt/zerv/.github/workflows/shared-zerv-versioning.yml@348c40b7e38f9ac640b85919de2d45c7077f6507 # v0.8.42
 
     create-version-prefix-tags:
         needs: zerv-versioning
         permissions:
-            contents: write
+            contents: write # push the major and major.minor tags
         uses: wislertt/zerv/.github/workflows/shared-create-tags.yml@348c40b7e38f9ac640b85919de2d45c7077f6507 # v0.8.42
         with:
             tags: >-
@@ -48,16 +53,18 @@ jobs:
     test:
         permissions:
             contents: read
-        uses: ./.github/workflows/test.yml
+        uses: $/.github/workflows/test.yml
 
     pre-commit:
         permissions:
             contents: read
-        uses: ./.github/workflows/pre-commit.yml
+        uses: $/.github/workflows/pre-commit.yml
 
     test-e2e-fresh-machine:
         permissions:
             contents: read
-        uses: ./.github/workflows/test-e2e-fresh-machine.yml
+        uses: $/.github/workflows/test-e2e-fresh-machine.yml
         secrets:
-            BWS_ACCESS_TOKEN_DEV: ${{ secrets.BWS_ACCESS_TOKEN_DEV }}
+            # TODO(2026-12-28): drop this ignore once jactionlint ships a fix for https://github.com/jdx/jactionlint/issues/364
+            # jactionlint ignore=secrets-outside-env
+            BWS_ACCESS_TOKEN: ${{ secrets.BWS_ACCESS_TOKEN }} # resolved from the called job's development environment

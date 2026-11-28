@@ -1,0 +1,3 @@
+rules:
+    # stay on -latest: the fresh-machine job exists to catch new images, and nothing flags a stale pin
+    mutable-runner-label: off
