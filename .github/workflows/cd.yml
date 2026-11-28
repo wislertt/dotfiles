@@ -23,7 +23,7 @@ jobs:
             contents: write # push the release commit and tag
             issues: write # comment on the issues a release closes
             pull-requests: write # comment on the pull requests a release includes
-        uses: wislertt/zerv/.github/workflows/shared-semantic-release.yml@348c40b7e38f9ac640b85919de2d45c7077f6507 # v0.8.42
+        uses: wislertt/zerv/.github/workflows/shared-semantic-release.yml@036c1339c52b67601fa9c6ddc1b2086eda01e150 # v0.8.46
         with:
             allowed_workflow_dispatch_branches: '["main"]'
             fail_on_invalid_workflow_dispatch_ref: true
@@ -33,13 +33,13 @@ jobs:
         permissions:
             contents: read
         if: ${{ needs.semantic-release.outputs.is_valid_semantic_release == 'true' }}
-        uses: wislertt/zerv/.github/workflows/shared-zerv-versioning.yml@348c40b7e38f9ac640b85919de2d45c7077f6507 # v0.8.42
+        uses: wislertt/zerv/.github/workflows/shared-zerv-versioning.yml@036c1339c52b67601fa9c6ddc1b2086eda01e150 # v0.8.46
 
     create-version-prefix-tags:
         needs: zerv-versioning
         permissions:
             contents: write # push the major and major.minor tags
-        uses: wislertt/zerv/.github/workflows/shared-create-tags.yml@348c40b7e38f9ac640b85919de2d45c7077f6507 # v0.8.42
+        uses: wislertt/zerv/.github/workflows/shared-create-tags.yml@036c1339c52b67601fa9c6ddc1b2086eda01e150 # v0.8.46
         with:
             tags: >-
                 [
